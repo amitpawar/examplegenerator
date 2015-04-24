@@ -70,8 +70,8 @@ public class SampleTest {
 		DataSet<Tuple2<String, Long>> urlSet = urls.flatMap(new URLsReader())
 				.distinct();
 		
-		dataSources.add(visitSet);
 		dataSources.add(urlSet);
+		dataSources.add(visitSet);
 
 		/*DataSet<Tuple2<Visits, Tuple2<String, Long>>> joinSet = visitSet
 				.join(urlSet).where(1).equalTo(0);*/
@@ -85,106 +85,14 @@ public class SampleTest {
 		DataSet<Tuple3<String, String, Long>> printSet = filterSet.project(1);
 		// .flatMap(new PrintResult());
 
-		/*
-		 * printSet.writeAsCsv(Config.outputPath()+"/" +
-		 * SampleTest.class.getName(), WriteMode.OVERWRITE);
-		 */
 		printSet.print();
-
-		/*
-		 * JavaPlan plan = env.createProgramPlan(); Optimizer compiler = new
-		 * Optimizer(); compiler.setDefaultParallelism(1); OptimizedPlan opPlan
-		 * = compiler.compile(plan);
-		 * 
-		 * for(PlanNode node : opPlan.getAllNodes()){ Operator<?> operator =
-		 * node.getOptimizerNode().getOperator(); operator.setParallelism(1);
-		 * System
-		 * .out.println("Node "+node.getOptimizerNode().getOperator().getName
-		 * ());
-		 * 
-		 * if(operator instanceof JoinOperatorBase){ if(operator instanceof
-		 * DualInputOperator) {
-		 * System.out.println("Trueeeeeeeeeeeeeeeeeeeee thattttttttt");
-		 * System.out.println(((JoinOperatorBase)
-		 * operator).getNumberOfInputs()); }
-		 * 
-		 * //System.out.println(((FilterOperatorBase)
-		 * operator).getOperatorInfo().getInputType());
-		 * //System.out.println(((FilterOperatorBase)
-		 * operator).getOperatorInfo().getOutputType());
-		 * 
-		 * } if(operator instanceof PlanProjectOperator){
-		 * System.out.println("Falseeeeeeeeeeeeeeeeeeeeeee");
-		 * System.out.println(((PlanProjectOperator)
-		 * operator).getOperatorInfo().getInputType());
-		 * System.out.println(((PlanProjectOperator)
-		 * operator).getOperatorInfo().getOutputType());
-		 * 
-		 * }
-		 * 
-		 * if(operator instanceof FilterOperatorBase){
-		 * System.out.println("FILTERRRRRRRRRRRRRRRR");
-		 * System.out.println(((FilterOperatorBase)
-		 * operator).getNumberOfInputs());
-		 * System.out.println(((FilterOperatorBase)
-		 * operator).getOperatorInfo().getInputType());
-		 * System.out.println(((FilterOperatorBase)
-		 * operator).getOperatorInfo().getOutputType());
-		 * System.out.println(((FilterOperatorBase
-		 * )operator).getUserCodeWrapper().getUserCodeObject()); Object test =
-		 * ((
-		 * FilterOperatorBase)operator).getUserCodeWrapper().getUserCodeObject(
-		 * );
-		 * 
-		 * if(test instanceof FlatMapFilter){
-		 * System.out.println("Yahoooooooooooooooooooooooooooooooo");
-		 * System.out.println(((FlatMapFilter)test).getWrappedFunction()); } }
-		 * 
-		 * if(node.getOptimizerNode().getOutgoingConnections() != null) {
-		 * for(DagConnection conn :
-		 * node.getOptimizerNode().getOutgoingConnections()){
-		 * System.out.println(
-		 * "OUTGOING-----"+conn.getTarget().getOperator().getName()); } }
-		 * for(DumpableConnection<OptimizerNode> input :
-		 * node.getOptimizerNode().getDumpableInputs() ){ if(input!=null)
-		 * System.out.println("Input "+input); }
-		 * 
-		 * System.out.println("Output "+node.getOptimizerNode().getOperator().
-		 * getOperatorInfo().getOutputType().toString());
-		 * System.out.println("Config "
-		 * +node.getOptimizerNode().getOperator().getParameters());
-		 * //System.out.println(node.getNodeName());
-		 * 
-		 * for(Channel channel : node.getInputs()){
-		 * System.out.println("Source: "+channel.getSource().getNodeName());
-		 * System.out.println(": ");
-		 * System.out.println("Target: "+channel.getTarget().getNodeName());
-		 * 
-		 * } }
-		 * 
-		 * PlanJSONDumpGenerator dumper = new PlanJSONDumpGenerator();
-		 * System.out.println(dumper.getOptimizerPlanAsJSON(opPlan));
-		 * PreviewPlanEnvironment pEnv = new PreviewPlanEnvironment();
-		 * pEnv.setAsContext(); List<DataSinkNode> previwPlan =
-		 * Optimizer.createPreOptimizedPlan(plan);
-		 * System.out.println(dumper.getPactPlanAsJSON(previwPlan));
-		 * System.out.println("PactPlan-----------------"); for(DataSinkNode
-		 * sinkNode : previwPlan){ System.out.println("Input"
-		 * +sinkNode.getInputConnection().toString());
-		 * System.out.println("Output "
-		 * +sinkNode.getOutgoingConnections().toString());
-		 * 
-		 * }
-		 * 
-		 * for(SinkPlanNode sourceNode : opPlan.getDataSinks()){
-		 * System.out.println("Source---------"+sourceNode.getNodeName()); }
-		 */
-
+		
 		OperatorTree tree = new OperatorTree(env);
 		//tree.createOperatorTree();
 		TupleGenerator tg = new TupleGenerator();
-		tg.generateTuples(dataSources, tree.createOperatorTree());
-		 env.execute();
+		tg.generateTuples(env, dataSources, tree.createOperatorTree());
+		printSet.writeAsCsv(Config.outputPath()+"/" + SampleTest.class.getName(), WriteMode.OVERWRITE);
+		//env.execute();
 	}
 
 	public static class PrintResult
