@@ -1,6 +1,7 @@
 package thesis.algorithm.logic;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -19,11 +20,22 @@ import org.apache.flink.core.fs.FileSystem.WriteMode;
 import org.apache.flink.core.memory.DataInputView;
 import org.apache.flink.core.memory.DataOutputView;
 
+import scala.Array;
+import thesis.examples.Config;
 import thesis.input.datasources.InputDataSource;
 import thesis.input.operatortree.SingleOperator;
 import thesis.input.operatortree.OperatorType;
 
 public class TupleGenerator {
+	
+	private List<InputDataSource> dataSources;
+	private List<SingleOperator> operatorTree;
+	
+	public TupleGenerator(List<InputDataSource> dataSources, List<SingleOperator> operatorTree) throws Exception {
+		this.dataSources = dataSources;
+		this.operatorTree = operatorTree;
+		generateTuples(this.dataSources, this.operatorTree);
+	}
 	
 	public void generateTuplesTest(ExecutionEnvironment env, List<DataSet<?>> dataSources, List<SingleOperator> operatorTree) throws Exception{
 		
@@ -64,16 +76,32 @@ public class TupleGenerator {
 		
 	}
 	
-	public void generateTuples(ExecutionEnvironment env, List<InputDataSource> dataSources, List<SingleOperator> operatorTree){
+	public void generateTuples(List<InputDataSource> dataSources, List<SingleOperator> operatorTree) throws Exception{
 		
+		int ctr = 0;
 		for(SingleOperator operator : operatorTree){
-			int id = operator.getOperatorInputDataSetId().get(0);
-			int i = 0;
-			if(id == dataSources.get(i++).getId()){
-				DataSet<?> set = dataSources.get(i).getDataSet();
+			
+			List<DataSet<?>> dataSets = new ArrayList<DataSet<?>>();
+			if(operator.getOperatorType() == OperatorType.LOAD){
+				for(int i = 0; i < operator.getOperatorInputDataSetId().size();i++){
+					dataSets.add(getDataSet(operator.getOperatorInputDataSetId().get(i))); 
+					dataSets.get(i).first(2).writeAsCsv(Config.outputPath()+"/TEST/LOAD"+ctr++, WriteMode.OVERWRITE);
+					
+				}
+				 	
 			}
 				
 		}
+	}
+	
+	public DataSet<?> getDataSet(int id){
+		
+		for(int i = 0; i < this.dataSources.size();i++){
+			if(this.dataSources.get(i).getId() == id)
+				return this.dataSources.get(i).getDataSet();
+		}
+		return null;
+		
 	}
 	
 	

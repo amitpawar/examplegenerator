@@ -51,6 +51,7 @@ public class OperatorTree {
 	private List<String> addedNodes;
 	private List<InputDataSource> dataSets;
 	private int dataSetId = 0;
+	private boolean isDualInputOperator = false;
 	
 	private enum InputNum { 
 		FIRST(0),SECOND(1);
@@ -82,7 +83,7 @@ public class OperatorTree {
 		for (SourcePlanNode sourceNode : this.optimizedPlan.getDataSources()) {
 			
 			List<Integer> inputDataSet = new ArrayList<Integer>();
-			inputDataSet.add(dataSetId++);
+			inputDataSet.add(this.dataSetId);
 			
 			if (!isVisited(sourceNode.getProgramOperator())) {
 				SingleOperator op = new SingleOperator();
@@ -95,44 +96,25 @@ public class OperatorTree {
 				this.addedNodes.add(sourceNode.getNodeName());
 				if (sourceNode.getOptimizerNode().getOutgoingConnections() != null)
 					addOutgoingNodes(sourceNode.getOptimizerNode().getOutgoingConnections(), inputDataSet);
+				this.dataSetId++;
 			}
 		}
-		
-		for (int i = 0; i < this.operatorTree.size(); i++) {
-			if(!(this.operatorTree.get(i).getOperatorInputType() == null)){
-				System.out.println("INPUT :");
-				for(TypeInformation<?> inputType : this.operatorTree.get(i).getOperatorInputType())
-					System.out.println(inputType+" ");
-			}
-			System.out.println("NODE :");
-			System.out.println("Input Dataset - " +this.operatorTree.get(i).getOperatorInputDataSetId().get(0));
-			System.out.println(this.operatorTree.get(i).getOperatorName());// .getOperatorType().name());
-			System.out.println(this.operatorTree.get(i).getOperatorType().name());
-			System.out.println("OUTPUT ");
-			System.out.println(this.operatorTree.get(i).getOperatorOutputType().toString());
-			if(this.operatorTree.get(i).getJoinCondition() != null)
-				System.out.println(this.operatorTree.get(i).getJoinCondition().getFirstInput()+"join("+
-						this.operatorTree.get(i).getJoinCondition().getSecontInput()+").where("
-						+this.operatorTree.get(i).getJoinCondition().getFirstInputKeyColumns()[0]+").equalsTo("+
-						this.operatorTree.get(i).getJoinCondition().getSecondInputKeyColumns()[0]+")");
-		}
+		displayItems();
 		
 		return this.operatorTree;
 	}
 
 	public void addOutgoingNodes(List<DagConnection> outgoingConnections, List<Integer> inputDatasets) {
+		
 		for (DagConnection conn : outgoingConnections) {
 			SingleOperator op = new SingleOperator();
 			OptimizerNode node = conn.getTarget().getOptimizerNode();
+			this.isDualInputOperator = (node.getOperator() instanceof DualInputOperator)? true:false;
 			
-			
-		/*	op.setOperatorName(node.getOperator().toString());
-		    op.setOperator(node.getOperator());
-			op.setOperatorInputType(addInputTypes(node.getOperator()));
-			op.setOperatorOutputType(node.getOperator().getOperatorInfo().getOutputType());
-			this.operators.add(op);*/
-			 
-			addNode(node, inputDatasets);
+			if(this.isDualInputOperator && this.dataSetId % 2 == 0)
+				return;
+			else
+				addNode(node, inputDatasets);
 			if (node.getOutgoingConnections() != null)
 				addOutgoingNodes(node.getOutgoingConnections(), inputDatasets);
 		}
@@ -143,6 +125,7 @@ public class OperatorTree {
 		
 		Operator<?> operator = node.getOperator();
 		SingleOperator opToAdd = new SingleOperator();
+	
 		
 		if(operator instanceof FlatMapOperatorBase){
 			//System.out.println("Testststs"+((FlatMapOperatorBase) operator).getInput().getClass());
@@ -160,7 +143,7 @@ public class OperatorTree {
 				opToAdd.setOperatorType(OperatorType.JOIN);
 				SingleOperator opToAddWithJoinPred = addJoinOperatorDetails((JoinOperatorBase) operator, opToAdd);
 				addOperatorDetails(opToAddWithJoinPred, operator, inputDatasets);
-				
+				this.dataSetId++;
 			}
 		}
 
@@ -168,6 +151,7 @@ public class OperatorTree {
 			if (!isVisited(operator)) {
 				opToAdd.setOperatorType(OperatorType.CROSS);
 				addOperatorDetails(opToAdd, operator, inputDatasets);
+				this.dataSetId++;
 			}
 		}
 
@@ -182,6 +166,7 @@ public class OperatorTree {
 			if (!isVisited(operator)) {
 				opToAdd.setOperatorType(OperatorType.UNION);
 				addOperatorDetails(opToAdd, operator, inputDatasets);
+				this.dataSetId++;
 			}
 		}
 		
@@ -247,6 +232,28 @@ public class OperatorTree {
 		
 		return opToAdd;
 	
+	}
+	
+	public void displayItems(){
+		
+		for (int i = 0; i < this.operatorTree.size(); i++) {
+		/*	if(!(this.operatorTree.get(i).getOperatorInputType() == null)){
+				System.out.println("INPUT :");
+				for(TypeInformation<?> inputType : this.operatorTree.get(i).getOperatorInputType())
+					System.out.println(inputType+" ");
+			}*/
+			System.out.println("NODE :");
+			System.out.println("Input Dataset - " +this.operatorTree.get(i).getOperatorInputDataSetId().get(0));
+			System.out.println(this.operatorTree.get(i).getOperatorName());// .getOperatorType().name());
+			System.out.println(this.operatorTree.get(i).getOperatorType().name());
+			//System.out.println("OUTPUT ");
+			//System.out.println(this.operatorTree.get(i).getOperatorOutputType().toString());
+			if(this.operatorTree.get(i).getJoinCondition() != null)
+				System.out.println(this.operatorTree.get(i).getJoinCondition().getFirstInput()+"join("+
+						this.operatorTree.get(i).getJoinCondition().getSecontInput()+").where("
+						+this.operatorTree.get(i).getJoinCondition().getFirstInputKeyColumns()[0]+").equalsTo("+
+						this.operatorTree.get(i).getJoinCondition().getSecondInputKeyColumns()[0]+")");
+		}
 	}
 	
 }

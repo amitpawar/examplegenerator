@@ -24,6 +24,7 @@ import org.apache.flink.api.java.operators.translation.PlanFilterOperator;
 import org.apache.flink.api.java.operators.translation.PlanProjectOperator;
 import org.apache.flink.api.java.operators.translation.PlanFilterOperator.FlatMapFilter;
 import org.apache.flink.api.java.tuple.Tuple;
+import org.apache.flink.api.java.tuple.Tuple1;
 import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.flink.api.java.tuple.Tuple3;
 import org.apache.flink.client.program.PackagedProgram.PreviewPlanEnvironment;
@@ -81,7 +82,7 @@ public class SampleTest {
 		dataSets.add(urlSet);
 		InputDataSource input2 = new InputDataSource();
 		input2.setDataSet(urlSet);
-		input2.setName("");
+		input2.setName("Urls");
 		input2.setId(1);
 		
 		dataSources.add(input1);
@@ -92,6 +93,8 @@ public class SampleTest {
 		
 		DataSet<Tuple2<Tuple2<String, String>, Tuple2<String, Long>>> joinSet = visitSet
 				.join(urlSet).where(1).equalTo(0);
+		
+		//DataSet<Tuple2<Tuple2<Tuple2<String, String>, Tuple2<String, Long>>, Tuple2<Tuple2<String, String>, Tuple2<String, Long>>>> crossSet = joinSet.cross(joinSet);
 
 		DataSet<Tuple2<Tuple2<String, String>, Tuple2<String, Long>>> filterSet = joinSet
 				.filter(new RankFilter());
@@ -99,15 +102,15 @@ public class SampleTest {
 		DataSet<Tuple3<String, String, Long>> printSet = filterSet.project(1);
 		// .flatMap(new PrintResult());
 
+		//crossSet.print();
 		printSet.print();
-		//printSet.collect();
 		
 		OperatorTree tree = new OperatorTree(env, dataSources );
-		tree.createOperatorTree();
-		//TupleGenerator tg = new TupleGenerator();
+		
+		TupleGenerator tg = new TupleGenerator(dataSources, tree.createOperatorTree());
 		//tg.generateTuples(env, dataSources, tree.createOperatorTree());
 		//printSet.writeAsCsv(Config.outputPath()+"/" + SampleTest.class.getName(), WriteMode.OVERWRITE);
-		//env.execute();
+		env.execute();
 	}
 
 	public static class PrintResult
