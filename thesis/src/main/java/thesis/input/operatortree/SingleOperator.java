@@ -4,6 +4,7 @@ import java.util.List;
 
 import org.apache.flink.api.common.operators.Operator;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
+import org.apache.flink.api.java.DataSet;
 
 public class SingleOperator {
 	
@@ -15,8 +16,26 @@ public class SingleOperator {
 	private List<TypeInformation<?>> operatorInputType;
 	private JoinCondition joinCondition;
 	private Operator<?> operator;
+	private List<Integer> operatorInputDataSetId;
+	private List<DataSet<?>> operatorDataSets;
 	
 	
+
+	public List<DataSet<?>> getOperatorDataSets() {
+		return operatorDataSets;
+	}
+
+	public void setOperatorDataSets(List<DataSet<?>> operatorDataSets) {
+		this.operatorDataSets = operatorDataSets;
+	}
+
+	public List<Integer> getOperatorInputDataSetId() {
+		return operatorInputDataSetId;
+	}
+
+	public void setOperatorInputDataSetId(List<Integer> operatorInputDataSetId) {
+		this.operatorInputDataSetId = operatorInputDataSetId;
+	}
 
 	public Operator<?> getOperator() {
 		return operator;

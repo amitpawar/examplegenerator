@@ -44,8 +44,10 @@ import org.apache.flink.optimizer.plan.SourcePlanNode;
 import org.apache.flink.optimizer.plandump.DumpableConnection;
 import org.apache.flink.optimizer.plandump.DumpableNode;
 import org.apache.flink.optimizer.plandump.PlanJSONDumpGenerator;
+import org.apache.mahout.classifier.df.data.Data;
 
 import thesis.algorithm.logic.TupleGenerator;
+import thesis.input.datasources.InputDataSource;
 import thesis.input.operatortree.OperatorTree;
 
 public class SampleTest {
@@ -54,7 +56,8 @@ public class SampleTest {
 
 	public static void main(String[] args) throws Exception {
 
-		List<DataSet<?>> dataSources = new ArrayList<DataSet<?>>();
+		List<InputDataSource> dataSources = new ArrayList<InputDataSource>();
+		List<DataSet<?>> dataSets = new ArrayList<DataSet<?>>();
 		
 		ExecutionEnvironment env = ExecutionEnvironment
 				.getExecutionEnvironment();
@@ -65,13 +68,24 @@ public class SampleTest {
 		
 		DataSet<Tuple2<String, String>> visitSet = visits.flatMap(
 				new VisitsReader()).distinct();
+		dataSets.add(visitSet);
+		InputDataSource input1 = new InputDataSource();
+		input1.setDataSet(visitSet);
+		input1.setName("Visits");
+		input1.setId(0);
+		
 		//DataSet<Visits> visitSet = visits.flatMap(new VisitsPOJAReader());
 
 		DataSet<Tuple2<String, Long>> urlSet = urls.flatMap(new URLsReader())
 				.distinct();
+		dataSets.add(urlSet);
+		InputDataSource input2 = new InputDataSource();
+		input2.setDataSet(urlSet);
+		input2.setName("");
+		input2.setId(1);
 		
-		dataSources.add(urlSet);
-		dataSources.add(visitSet);
+		dataSources.add(input1);
+		dataSources.add(input2);
 
 		/*DataSet<Tuple2<Visits, Tuple2<String, Long>>> joinSet = visitSet
 				.join(urlSet).where(1).equalTo(0);*/
@@ -86,12 +100,13 @@ public class SampleTest {
 		// .flatMap(new PrintResult());
 
 		printSet.print();
+		//printSet.collect();
 		
-		OperatorTree tree = new OperatorTree(env);
-		//tree.createOperatorTree();
-		TupleGenerator tg = new TupleGenerator();
-		tg.generateTuples(env, dataSources, tree.createOperatorTree());
-		printSet.writeAsCsv(Config.outputPath()+"/" + SampleTest.class.getName(), WriteMode.OVERWRITE);
+		OperatorTree tree = new OperatorTree(env, dataSources );
+		tree.createOperatorTree();
+		//TupleGenerator tg = new TupleGenerator();
+		//tg.generateTuples(env, dataSources, tree.createOperatorTree());
+		//printSet.writeAsCsv(Config.outputPath()+"/" + SampleTest.class.getName(), WriteMode.OVERWRITE);
 		//env.execute();
 	}
 

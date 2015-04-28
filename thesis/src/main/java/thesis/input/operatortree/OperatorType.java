@@ -7,5 +7,6 @@ public enum OperatorType {
 	FILTER,
 	JOIN,
 	PROJECT,
-	UNION
+	UNION,
+	SOURCE
 }

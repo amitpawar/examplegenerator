@@ -2,6 +2,7 @@ package thesis.input.operatortree;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.List;
 
 import org.apache.flink.api.common.operators.base.CrossOperatorBase;
@@ -9,13 +10,16 @@ import org.apache.flink.api.common.operators.base.FilterOperatorBase;
 import org.apache.flink.api.common.operators.base.FlatMapOperatorBase;
 import org.apache.flink.api.common.operators.base.GroupReduceOperatorBase;
 import org.apache.flink.api.common.operators.base.JoinOperatorBase;
+import org.apache.flink.api.java.DataSet;
 import org.apache.flink.api.java.ExecutionEnvironment;
 import org.apache.flink.api.java.operators.DistinctOperator;
+import org.apache.flink.api.java.operators.FilterOperator;
 import org.apache.flink.api.java.operators.FlatMapOperator;
 import org.apache.flink.api.java.operators.JoinOperator;
 import org.apache.flink.api.java.operators.JoinOperator.JoinOperatorSets.JoinOperatorSetsPredicate;
 import org.apache.flink.api.java.operators.UnionOperator;
 import org.apache.flink.api.java.operators.translation.JavaPlan;
+import org.apache.flink.api.java.operators.translation.PlanFilterOperator;
 import org.apache.flink.api.java.operators.translation.PlanProjectOperator;
 import org.apache.flink.optimizer.DataStatistics;
 import org.apache.flink.optimizer.Optimizer;
@@ -27,6 +31,7 @@ import org.apache.flink.optimizer.plan.OptimizedPlan;
 import org.apache.flink.optimizer.plan.PlanNode;
 import org.apache.flink.optimizer.plan.SourcePlanNode;
 import org.apache.flink.api.common.operators.DualInputOperator;
+import org.apache.flink.api.common.operators.GenericDataSinkBase;
 import org.apache.flink.api.common.operators.GenericDataSourceBase;
 import org.apache.flink.api.common.operators.Operator;
 import org.apache.flink.api.common.operators.SingleInputOperator;
@@ -34,6 +39,7 @@ import org.apache.flink.api.common.operators.Union;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.configuration.Configuration;
 
+import thesis.input.datasources.InputDataSource;
 import thesis.input.operatortree.SingleOperator.JoinCondition;
 
 public class OperatorTree {
@@ -43,6 +49,8 @@ public class OperatorTree {
 	private OptimizedPlan optimizedPlan;
 	private List<SingleOperator> operatorTree;
 	private List<String> addedNodes;
+	private List<InputDataSource> dataSets;
+	private int dataSetId = 0;
 	
 	private enum InputNum { 
 		FIRST(0),SECOND(1);
@@ -55,14 +63,16 @@ public class OperatorTree {
 		}
 	};
 
-	public OperatorTree(ExecutionEnvironment env) {
+	public OperatorTree(ExecutionEnvironment env, List<InputDataSource> dataSets) {
 		this.javaPlan = env.createProgramPlan();
 		this.optimizer = new Optimizer(new DataStatistics(),new DefaultCostEstimator(), new Configuration());
 		this.optimizedPlan = this.optimizer.compile(this.javaPlan);
 		this.operatorTree = new ArrayList<SingleOperator>();
 		this.addedNodes = new ArrayList<String>();
+		this.dataSets = dataSets;
+		
 	}
-
+	
 	private boolean isVisited(Operator<?> operator) {
 		return (this.addedNodes.contains(operator.getName()));
 	}
@@ -70,17 +80,21 @@ public class OperatorTree {
 	public List<SingleOperator> createOperatorTree() {
 		
 		for (SourcePlanNode sourceNode : this.optimizedPlan.getDataSources()) {
-		
+			
+			List<Integer> inputDataSet = new ArrayList<Integer>();
+			inputDataSet.add(dataSetId++);
+			
 			if (!isVisited(sourceNode.getProgramOperator())) {
 				SingleOperator op = new SingleOperator();
-				op.setOperatorType(OperatorType.LOAD);
+				op.setOperatorType(OperatorType.SOURCE);
+				op.setOperatorInputDataSetId(inputDataSet);
 				op.setOperator(sourceNode.getProgramOperator());
 				op.setOperatorName(sourceNode.getNodeName());
 				op.setOperatorOutputType(sourceNode.getOptimizerNode().getOperator().getOperatorInfo().getOutputType());
 				this.operatorTree.add(op);
 				this.addedNodes.add(sourceNode.getNodeName());
 				if (sourceNode.getOptimizerNode().getOutgoingConnections() != null)
-					addOutgoingNodes(sourceNode.getOptimizerNode().getOutgoingConnections());
+					addOutgoingNodes(sourceNode.getOptimizerNode().getOutgoingConnections(), inputDataSet);
 			}
 		}
 		
@@ -91,6 +105,7 @@ public class OperatorTree {
 					System.out.println(inputType+" ");
 			}
 			System.out.println("NODE :");
+			System.out.println("Input Dataset - " +this.operatorTree.get(i).getOperatorInputDataSetId().get(0));
 			System.out.println(this.operatorTree.get(i).getOperatorName());// .getOperatorType().name());
 			System.out.println(this.operatorTree.get(i).getOperatorType().name());
 			System.out.println("OUTPUT ");
@@ -105,7 +120,7 @@ public class OperatorTree {
 		return this.operatorTree;
 	}
 
-	public void addOutgoingNodes(List<DagConnection> outgoingConnections) {
+	public void addOutgoingNodes(List<DagConnection> outgoingConnections, List<Integer> inputDatasets) {
 		for (DagConnection conn : outgoingConnections) {
 			SingleOperator op = new SingleOperator();
 			OptimizerNode node = conn.getTarget().getOptimizerNode();
@@ -117,14 +132,14 @@ public class OperatorTree {
 			op.setOperatorOutputType(node.getOperator().getOperatorInfo().getOutputType());
 			this.operators.add(op);*/
 			 
-			addNode(node);
+			addNode(node, inputDatasets);
 			if (node.getOutgoingConnections() != null)
-				addOutgoingNodes(node.getOutgoingConnections());
+				addOutgoingNodes(node.getOutgoingConnections(), inputDatasets);
 		}
 	}
 
 	@SuppressWarnings("rawtypes")
-	public void addNode(OptimizerNode node) {
+	public void addNode(OptimizerNode node, List<Integer> inputDatasets) {
 		
 		Operator<?> operator = node.getOperator();
 		SingleOperator opToAdd = new SingleOperator();
@@ -132,9 +147,11 @@ public class OperatorTree {
 		if(operator instanceof FlatMapOperatorBase){
 			//System.out.println("Testststs"+((FlatMapOperatorBase) operator).getInput().getClass());
 			if(((FlatMapOperatorBase) operator).getInput() instanceof GenericDataSourceBase){
-				System.out.println("Yes this is flatmap after Load/DataSource "+operator.getOperatorInfo().getOutputType());
-				//System.out.println(((FlatMapOperatorBase) operator).
-				System.out.println(((FlatMapOperatorBase) operator).getOperatorInfo().getInputType());
+			
+				if(!isVisited(operator)){
+					opToAdd.setOperatorType(OperatorType.LOAD);
+					addOperatorDetails(opToAdd, operator, inputDatasets);
+				}
 			}
 		}
 		
@@ -142,7 +159,7 @@ public class OperatorTree {
 			if (!isVisited(operator)) {
 				opToAdd.setOperatorType(OperatorType.JOIN);
 				SingleOperator opToAddWithJoinPred = addJoinOperatorDetails((JoinOperatorBase) operator, opToAdd);
-				addOperatorDetails(opToAddWithJoinPred, operator);
+				addOperatorDetails(opToAddWithJoinPred, operator, inputDatasets);
 				
 			}
 		}
@@ -150,28 +167,28 @@ public class OperatorTree {
 		if (operator instanceof CrossOperatorBase) {
 			if (!isVisited(operator)) {
 				opToAdd.setOperatorType(OperatorType.CROSS);
-				addOperatorDetails(opToAdd, operator);
+				addOperatorDetails(opToAdd, operator, inputDatasets);
 			}
 		}
 
 		if (operator instanceof FilterOperatorBase) {
 			if (!isVisited(operator)) {
 				opToAdd.setOperatorType(OperatorType.FILTER);
-				addOperatorDetails(opToAdd, operator);
+				addOperatorDetails(opToAdd, operator, inputDatasets);
 			}
 		}
 		
 		if (operator instanceof Union<?>) {
 			if (!isVisited(operator)) {
 				opToAdd.setOperatorType(OperatorType.UNION);
-				addOperatorDetails(opToAdd, operator);
+				addOperatorDetails(opToAdd, operator, inputDatasets);
 			}
 		}
 		
 		if (operator instanceof PlanProjectOperator) {
 			if (!isVisited(operator)) {
 				opToAdd.setOperatorType(OperatorType.PROJECT);
-				addOperatorDetails(opToAdd, operator);
+				addOperatorDetails(opToAdd, operator, inputDatasets);
 			}
 		}
 
@@ -179,17 +196,18 @@ public class OperatorTree {
 			if (operator.getName().contains("Distinct")) {
 				if (!isVisited(operator)) {
 					opToAdd.setOperatorType(OperatorType.DISTINCT);
-					addOperatorDetails(opToAdd, operator);
+					addOperatorDetails(opToAdd, operator, inputDatasets);
 				}
 			}
 		}
 		
 	}
 	
-	public void addOperatorDetails(SingleOperator opToAdd, Operator<?> operator){
+	public void addOperatorDetails(SingleOperator opToAdd, Operator<?> operator, List<Integer> inputDatasets){
 		opToAdd.setOperatorName(operator.getName());
 		opToAdd.setOperator(operator);
 		opToAdd.setOperatorInputType(addInputTypes(operator));
+		opToAdd.setOperatorInputDataSetId(inputDatasets);
 		opToAdd.setOperatorOutputType(operator.getOperatorInfo().getOutputType());
 		this.operatorTree.add(opToAdd);
 		this.addedNodes.add(operator.getName());
