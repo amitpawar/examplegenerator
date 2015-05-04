@@ -29,7 +29,7 @@ import thesis.examples.Config;
 import thesis.input.datasources.InputDataSource;
 import thesis.input.operatortree.SingleOperator;
 import thesis.input.operatortree.OperatorType;
-import thesis.input.operatortree.SingleOperator.JoinCondition;
+import thesis.input.operatortree.SingleOperator.JUCCondition;
 
 public class TupleGenerator {
 
@@ -132,7 +132,7 @@ public class TupleGenerator {
 			
 			if(operator.getOperatorType() == OperatorType.JOIN){
 				int ctr = 0;
-				JoinCondition condition = operator.getJoinCondition();
+				JUCCondition condition = operator.getJUCCondition();
 				DataSet<?> joinResult = 
 						sources[condition.getFirstInput()].join(sources[condition.getSecontInput()])
 						.where(condition.getFirstInputKeyColumns())
@@ -145,6 +145,25 @@ public class TupleGenerator {
 				int ctr = 0;
 				DataSet<?> projResult = dataStream.project(operator.getProjectColumns());
 				projResult.writeAsCsv(Config.outputPath()+"/TEST/downStream/PROJECT"+ctr++,WriteMode.OVERWRITE);
+				dataStream = projResult;
+			}
+			
+			if(operator.getOperatorType() == OperatorType.CROSS){
+				int ctr = 0;
+				JUCCondition condition = operator.getJUCCondition();
+				DataSet<?> crossResult = 
+						sources[condition.getFirstInput()].cross(sources[condition.getSecontInput()]);
+				crossResult.writeAsCsv(Config.outputPath()+"/TEST/downStream/CROSS"+ctr++,WriteMode.OVERWRITE);
+				dataStream = crossResult;
+			}
+			
+			if(operator.getOperatorType() == OperatorType.UNION){
+				int ctr = 0;
+				JUCCondition condition = operator.getJUCCondition();
+				DataSet<?> unionResult = 
+						sources[condition.getFirstInput()].union(sources[condition.getSecontInput()]);
+				unionResult.writeAsCsv(Config.outputPath()+"/TEST/downStream/CROSS"+ctr++,WriteMode.OVERWRITE);
+				dataStream = unionResult;
 			}
 		}
 	}

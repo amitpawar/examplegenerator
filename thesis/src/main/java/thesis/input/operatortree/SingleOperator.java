@@ -14,7 +14,7 @@ public class SingleOperator {
 	private OperatorType previousOperatorType;
 	private TypeInformation<?> operatorOutputType;
 	private List<TypeInformation<?>> operatorInputType;
-	private JoinCondition joinCondition;
+	private JUCCondition jucCondition;
 	private Operator<?> operator;
 	private List<Integer> operatorInputDataSetId;
 	private List<DataSet<?>> operatorDataSets;
@@ -63,12 +63,12 @@ public class SingleOperator {
 		this.operator = operator;
 	}
 
-	public JoinCondition getJoinCondition() {
-		return joinCondition;
+	public JUCCondition getJUCCondition() {
+		return jucCondition;
 	}
 
-	public void setJoinCondition(JoinCondition joinCondition) {
-		this.joinCondition = joinCondition;
+	public void setJUCCondition(JUCCondition joinCondition) {
+		this.jucCondition = joinCondition;
 	}
 
 	public List<TypeInformation<?>> getOperatorInputType() {
@@ -120,7 +120,7 @@ public class SingleOperator {
 	}
 	
 	
-	public class JoinCondition {
+	public class JUCCondition {
 		private int firstInput;
 		private int secontInput;
 		private int[] firstInputKeyColumns;

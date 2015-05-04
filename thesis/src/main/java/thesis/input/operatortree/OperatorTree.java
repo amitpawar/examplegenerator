@@ -18,6 +18,7 @@ import org.apache.flink.api.java.operators.FilterOperator;
 import org.apache.flink.api.java.operators.FlatMapOperator;
 import org.apache.flink.api.java.operators.JoinOperator;
 import org.apache.flink.api.java.operators.JoinOperator.JoinOperatorSets.JoinOperatorSetsPredicate;
+import org.apache.flink.api.java.operators.ProjectOperator;
 import org.apache.flink.api.java.operators.UnionOperator;
 import org.apache.flink.api.java.operators.translation.JavaPlan;
 import org.apache.flink.api.java.operators.translation.PlanFilterOperator;
@@ -41,7 +42,7 @@ import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.configuration.Configuration;
 
 import thesis.input.datasources.InputDataSource;
-import thesis.input.operatortree.SingleOperator.JoinCondition;
+import thesis.input.operatortree.SingleOperator.JUCCondition;
 
 public class OperatorTree {
 
@@ -133,6 +134,7 @@ public class OperatorTree {
 			if(((FlatMapOperatorBase) operator).getInput() instanceof GenericDataSourceBase){
 			
 				if(!isVisited(operator)){
+					
 					opToAdd.setOperatorType(OperatorType.LOAD);
 					addOperatorDetails(opToAdd, operator, inputDatasets);
 				}
@@ -174,6 +176,7 @@ public class OperatorTree {
 		if (operator instanceof PlanProjectOperator) {
 			if (!isVisited(operator)) {
 				opToAdd.setOperatorType(OperatorType.PROJECT);
+				
 				opToAdd.setProjectColumns(getProjectArray(operator.getName()));
 				addOperatorDetails(opToAdd, operator, inputDatasets);
 			}
@@ -223,14 +226,14 @@ public class OperatorTree {
 		int[] firstInputKeys = joinOperator.getKeyColumns(InputNum.FIRST.getValue());
 		int[] secondInputKeys = joinOperator.getKeyColumns(InputNum.SECOND.getValue());
 		
-		JoinCondition joinPred = opToAdd.new JoinCondition();
+		JUCCondition joinPred = opToAdd.new JUCCondition();
 		
 		joinPred.setFirstInput(InputNum.FIRST.getValue());
 		joinPred.setSecontInput(InputNum.SECOND.getValue());
 		joinPred.setFirstInputKeyColumns(firstInputKeys);
 		joinPred.setSecondInputKeyColumns(secondInputKeys);
 		
-		opToAdd.setJoinCondition(joinPred);
+		opToAdd.setJUCCondition(joinPred);
 		
 		return opToAdd;
 	
@@ -262,11 +265,11 @@ public class OperatorTree {
 			System.out.println(this.operatorTree.get(i).getOperatorType().name());
 			//System.out.println("OUTPUT ");
 			//System.out.println(this.operatorTree.get(i).getOperatorOutputType().toString());
-			if(this.operatorTree.get(i).getJoinCondition() != null)
-				System.out.println(this.operatorTree.get(i).getJoinCondition().getFirstInput()+"join("+
-						this.operatorTree.get(i).getJoinCondition().getSecontInput()+").where("
-						+this.operatorTree.get(i).getJoinCondition().getFirstInputKeyColumns()[0]+").equalsTo("+
-						this.operatorTree.get(i).getJoinCondition().getSecondInputKeyColumns()[0]+")");
+			if(this.operatorTree.get(i).getJUCCondition() != null)
+				System.out.println(this.operatorTree.get(i).getJUCCondition().getFirstInput()+"join("+
+						this.operatorTree.get(i).getJUCCondition().getSecontInput()+").where("
+						+this.operatorTree.get(i).getJUCCondition().getFirstInputKeyColumns()[0]+").equalsTo("+
+						this.operatorTree.get(i).getJUCCondition().getSecondInputKeyColumns()[0]+")");
 		}
 	}
 	
