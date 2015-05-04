@@ -29,6 +29,7 @@ import thesis.examples.Config;
 import thesis.input.datasources.InputDataSource;
 import thesis.input.operatortree.SingleOperator;
 import thesis.input.operatortree.OperatorType;
+import thesis.input.operatortree.SingleOperator.JoinCondition;
 
 public class TupleGenerator {
 
@@ -39,9 +40,11 @@ public class TupleGenerator {
 			List<SingleOperator> operatorTree) throws Exception {
 		this.dataSources = dataSources;
 		this.operatorTree = operatorTree;
-		generateTuples(this.dataSources, this.operatorTree);
+		//generateTuples(this.dataSources, this.operatorTree);
+		downStreamPass(this.dataSources, this.operatorTree);
 	}
 
+	@SuppressWarnings("unchecked")
 	public void generateTuplesTest(ExecutionEnvironment env,
 			List<DataSet<?>> dataSources, List<SingleOperator> operatorTree)
 			throws Exception {
@@ -49,8 +52,7 @@ public class TupleGenerator {
 		for (SingleOperator operator : operatorTree) {
 			if (operator.getOperatorType() == OperatorType.LOAD) {
 				dataSources.get(1).getType();
-				DataSet<Tuple2<?, ?>> dataset = (DataSet<Tuple2<?, ?>>) dataSources
-						.get(1).first(2);
+				DataSet<Tuple2<?, ?>> dataset = (DataSet<Tuple2<?, ?>>) dataSources.get(1).first(2);
 
 				Set<Tuple2<?, ?>> coll = new HashSet<Tuple2<?, ?>>();
 
@@ -100,7 +102,7 @@ public class TupleGenerator {
 					mainSet.writeAsCsv(Config.outputPath()+"/TEST/Main/"+ctr1++);
 					DataSet<?> sampleSet = dataSets.get(i).first(2);// .writeAsCsv(Config.outputPath()+"/TEST/LOAD"+ctr++,WriteMode.OVERWRITE);
 					sampleSet.writeAsCsv(Config.outputPath()+"/TEST/LOAD"+ctr++,WriteMode.OVERWRITE);										
-					
+					operator.setExampleTuples(sampleSet);
 					DataSet<?> filterSet = mainSet.filter(new TupleFilter())
 							.withBroadcastSet(sampleSet, "filterset");
 					
@@ -112,6 +114,40 @@ public class TupleGenerator {
 		}
 	}
 
+	public void downStreamPass(List<InputDataSource> dataSources,List<SingleOperator> operatorTree){
+		
+		DataSet<?>[] sources = new DataSet<?>[dataSources.size()];
+		for (int i = 0; i < dataSources.size(); i++){
+			sources[i] = dataSources.get(i).getDataSet().first(2);
+			//sources[i].writeAsCsv(Config.outputPath()+"/TEST/downStream/LOAD"+i,WriteMode.OVERWRITE);
+		}
+		
+		for(SingleOperator operator : operatorTree){
+			if(operator.getOperatorType() == OperatorType.LOAD){
+				int id = operator.getOperatorInputDataSetId().get(0);
+				sources[id].writeAsCsv(Config.outputPath()+"/TEST/downStream/LOAD"+id,WriteMode.OVERWRITE);
+			}
+			
+			if(operator.getOperatorType() == OperatorType.JOIN){
+				int ctr = 0;
+				JoinCondition condition = operator.getJoinCondition();
+				DataSet<?> joinResult = 
+						sources[condition.getFirstInput()].join(sources[condition.getSecontInput()])
+						.where(condition.getFirstInputKeyColumns())
+						.equalTo(condition.getSecondInputKeyColumns());
+				joinResult.writeAsCsv(Config.outputPath()+"/TEST/downStream/JOIN"+ctr++,WriteMode.OVERWRITE);
+			}
+		}
+	}
+	
+	public void upStreamPass(){
+		
+	}
+	
+	public void pruneTuples(){
+		
+	}
+	
 	public DataSet<?> getDataSet(int id) {
 
 		for (int i = 0; i < this.dataSources.size(); i++) {
@@ -134,10 +170,7 @@ public class TupleGenerator {
 		
 		@Override
 		public boolean filter(Object arg0) throws Exception {
-			
 			return !sampleSet.contains(arg0);
 		}
-		
 	}
-
 }

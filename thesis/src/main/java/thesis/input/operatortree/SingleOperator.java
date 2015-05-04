@@ -18,8 +18,17 @@ public class SingleOperator {
 	private Operator<?> operator;
 	private List<Integer> operatorInputDataSetId;
 	private List<DataSet<?>> operatorDataSets;
+	private DataSet<?> exampleTuples;
 	
 	
+
+	public DataSet<?> getExampleTuples() {
+		return exampleTuples;
+	}
+
+	public void setExampleTuples(DataSet<?> exampleTuples) {
+		this.exampleTuples = exampleTuples;
+	}
 
 	public List<DataSet<?>> getOperatorDataSets() {
 		return operatorDataSets;

@@ -33,8 +33,8 @@ public class DifferentUsersUnifiedLog {
 		groupedFilteredSet.writeAsCsv(Config.outputPath()+"/"+DifferentUsersUnifiedLog.class.getName(),WriteMode.OVERWRITE);
 
 		//env.execute();
-		OperatorTree tree = new OperatorTree(env);
-		tree.createOperatorTree();
+		//OperatorTree tree = new OperatorTree(env);
+		//tree.createOperatorTree();
 	}
 
 }
