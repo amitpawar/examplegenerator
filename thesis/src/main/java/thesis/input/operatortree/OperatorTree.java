@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
+import java.util.regex.Pattern;
 
 import org.apache.flink.api.common.operators.base.CrossOperatorBase;
 import org.apache.flink.api.common.operators.base.FilterOperatorBase;
@@ -173,6 +174,7 @@ public class OperatorTree {
 		if (operator instanceof PlanProjectOperator) {
 			if (!isVisited(operator)) {
 				opToAdd.setOperatorType(OperatorType.PROJECT);
+				opToAdd.setProjectColumns(getProjectArray(operator.getName()));
 				addOperatorDetails(opToAdd, operator, inputDatasets);
 			}
 		}
@@ -232,6 +234,18 @@ public class OperatorTree {
 		
 		return opToAdd;
 	
+	}
+	
+	public int[] getProjectArray(String operatorName){
+	
+		Pattern separator = Pattern.compile("[\\[,\\]]");
+		String[] tokens = separator.split(operatorName);
+		
+		int[] projectArray = new int[tokens.length-1];
+		for(int ctr = 0; ctr < tokens.length-1; ctr++){
+			projectArray[ctr] = Integer.parseInt(tokens[ctr+1].replaceAll("\\s", ""));
+		}
+		return projectArray;
 	}
 	
 	public void displayItems(){

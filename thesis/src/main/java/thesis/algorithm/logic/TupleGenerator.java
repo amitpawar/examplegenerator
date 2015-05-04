@@ -116,15 +116,17 @@ public class TupleGenerator {
 
 	public void downStreamPass(List<InputDataSource> dataSources,List<SingleOperator> operatorTree){
 		
+		DataSet<?> dataStream = null ;
 		DataSet<?>[] sources = new DataSet<?>[dataSources.size()];
 		for (int i = 0; i < dataSources.size(); i++){
-			sources[i] = dataSources.get(i).getDataSet().first(2);
+			sources[i] = dataSources.get(i).getDataSet();
 			//sources[i].writeAsCsv(Config.outputPath()+"/TEST/downStream/LOAD"+i,WriteMode.OVERWRITE);
 		}
 		
 		for(SingleOperator operator : operatorTree){
 			if(operator.getOperatorType() == OperatorType.LOAD){
 				int id = operator.getOperatorInputDataSetId().get(0);
+				sources[id] = sources[id].first(2);
 				sources[id].writeAsCsv(Config.outputPath()+"/TEST/downStream/LOAD"+id,WriteMode.OVERWRITE);
 			}
 			
@@ -136,6 +138,13 @@ public class TupleGenerator {
 						.where(condition.getFirstInputKeyColumns())
 						.equalTo(condition.getSecondInputKeyColumns());
 				joinResult.writeAsCsv(Config.outputPath()+"/TEST/downStream/JOIN"+ctr++,WriteMode.OVERWRITE);
+				dataStream = joinResult;
+			}
+			
+			if(operator.getOperatorType() == OperatorType.PROJECT){
+				int ctr = 0;
+				DataSet<?> projResult = dataStream.project(operator.getProjectColumns());
+				projResult.writeAsCsv(Config.outputPath()+"/TEST/downStream/PROJECT"+ctr++,WriteMode.OVERWRITE);
 			}
 		}
 	}

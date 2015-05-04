@@ -19,8 +19,17 @@ public class SingleOperator {
 	private List<Integer> operatorInputDataSetId;
 	private List<DataSet<?>> operatorDataSets;
 	private DataSet<?> exampleTuples;
+	private int[] projectColumns;
 	
 	
+
+	public int[] getProjectColumns() {
+		return projectColumns;
+	}
+
+	public void setProjectColumns(int[] projectColumns) {
+		this.projectColumns = projectColumns;
+	}
 
 	public DataSet<?> getExampleTuples() {
 		return exampleTuples;
@@ -142,8 +151,6 @@ public class SingleOperator {
 		public void setSecontInput(int secontInput) {
 			this.secontInput = secontInput;
 		}
-	
-		
 	}
 
 }
