@@ -67,6 +67,7 @@ public class SampleTest {
 		DataSource<String> urls = env.readTextFile(Config.pathToUrls());
 		
 		
+		
 		DataSet<Tuple2<String, String>> visitSet = visits.flatMap(
 				new VisitsReader()).distinct();
 		dataSets.add(visitSet);

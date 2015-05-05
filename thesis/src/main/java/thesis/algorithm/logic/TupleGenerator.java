@@ -134,7 +134,7 @@ public class TupleGenerator {
 				int ctr = 0;
 				JUCCondition condition = operator.getJUCCondition();
 				DataSet<?> joinResult = 
-						sources[condition.getFirstInput()].join(sources[condition.getSecontInput()])
+						sources[condition.getFirstInput()].join(sources[condition.getSecondInput()])
 						.where(condition.getFirstInputKeyColumns())
 						.equalTo(condition.getSecondInputKeyColumns());
 				joinResult.writeAsCsv(Config.outputPath()+"/TEST/downStream/JOIN"+ctr++,WriteMode.OVERWRITE);
@@ -152,7 +152,7 @@ public class TupleGenerator {
 				int ctr = 0;
 				JUCCondition condition = operator.getJUCCondition();
 				DataSet<?> crossResult = 
-						sources[condition.getFirstInput()].cross(sources[condition.getSecontInput()]);
+						sources[condition.getFirstInput()].cross(sources[condition.getSecondInput()]);
 				crossResult.writeAsCsv(Config.outputPath()+"/TEST/downStream/CROSS"+ctr++,WriteMode.OVERWRITE);
 				dataStream = crossResult;
 			}
@@ -160,10 +160,12 @@ public class TupleGenerator {
 			if(operator.getOperatorType() == OperatorType.UNION){
 				int ctr = 0;
 				JUCCondition condition = operator.getJUCCondition();
-				/*DataSet<?> unionResult = 
-						sources[condition.getFirstInput()].union(sources[condition.getSecontInput()]);
-				unionResult.writeAsCsv(Config.outputPath()+"/TEST/downStream/CROSS"+ctr++,WriteMode.OVERWRITE);
-				dataStream = unionResult;*/
+				DataSet firstInput = sources[condition.getFirstInput()];
+				DataSet secondInput = sources[condition.getSecondInput()];
+				DataSet<?> unionResult = firstInput.union (secondInput);
+						//sources[condition.getFirstInput()].union(sources[condition.getSecondInput()]);
+				unionResult.writeAsCsv(Config.outputPath()+"/TEST/downStream/UNION"+ctr++,WriteMode.OVERWRITE);
+				dataStream = unionResult;
 			}
 		}
 	}

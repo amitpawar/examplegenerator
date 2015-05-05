@@ -153,7 +153,8 @@ public class OperatorTree {
 		if (operator instanceof CrossOperatorBase) {
 			if (!isVisited(operator)) {
 				opToAdd.setOperatorType(OperatorType.CROSS);
-				addOperatorDetails(opToAdd, operator, inputDatasets);
+				SingleOperator opWithDetails = addJUCDetails(opToAdd);
+				addOperatorDetails(opWithDetails, operator, inputDatasets);
 				this.dataSetId++;
 			}
 		}
@@ -168,7 +169,8 @@ public class OperatorTree {
 		if (operator instanceof Union<?>) {
 			if (!isVisited(operator)) {
 				opToAdd.setOperatorType(OperatorType.UNION);
-				addOperatorDetails(opToAdd, operator, inputDatasets);
+				SingleOperator opWithDetails = addJUCDetails(opToAdd);
+				addOperatorDetails(opWithDetails, operator, inputDatasets);
 				this.dataSetId++;
 			}
 		}
@@ -229,7 +231,7 @@ public class OperatorTree {
 		JUCCondition joinPred = opToAdd.new JUCCondition();
 		
 		joinPred.setFirstInput(InputNum.FIRST.getValue());
-		joinPred.setSecontInput(InputNum.SECOND.getValue());
+		joinPred.setSecondInput(InputNum.SECOND.getValue());
 		joinPred.setFirstInputKeyColumns(firstInputKeys);
 		joinPred.setSecondInputKeyColumns(secondInputKeys);
 		
@@ -237,6 +239,15 @@ public class OperatorTree {
 		
 		return opToAdd;
 	
+	}
+	
+	public SingleOperator addJUCDetails(SingleOperator opToAdd){
+		JUCCondition condition = opToAdd.new JUCCondition();
+		condition.setFirstInput(InputNum.FIRST.getValue());
+		condition.setSecondInput(InputNum.SECOND.getValue());
+		
+		opToAdd.setJUCCondition(condition);
+		return opToAdd;
 	}
 	
 	public int[] getProjectArray(String operatorName){
@@ -266,10 +277,13 @@ public class OperatorTree {
 			//System.out.println("OUTPUT ");
 			//System.out.println(this.operatorTree.get(i).getOperatorOutputType().toString());
 			if(this.operatorTree.get(i).getJUCCondition() != null)
+			{
+				if(this.operatorTree.get(i).getJUCCondition().getFirstInputKeyColumns()!= null)
 				System.out.println(this.operatorTree.get(i).getJUCCondition().getFirstInput()+"join("+
-						this.operatorTree.get(i).getJUCCondition().getSecontInput()+").where("
+						this.operatorTree.get(i).getJUCCondition().getSecondInput()+").where("
 						+this.operatorTree.get(i).getJUCCondition().getFirstInputKeyColumns()[0]+").equalsTo("+
 						this.operatorTree.get(i).getJUCCondition().getSecondInputKeyColumns()[0]+")");
+			}
 		}
 	}
 	

@@ -122,7 +122,7 @@ public class SingleOperator {
 	
 	public class JUCCondition {
 		private int firstInput;
-		private int secontInput;
+		private int secondInput;
 		private int[] firstInputKeyColumns;
 		private int[] secondInputKeyColumns;
 	
@@ -145,11 +145,11 @@ public class SingleOperator {
 		public void setFirstInput(int firstInput) {
 			this.firstInput = firstInput;
 		}
-		public int getSecontInput() {
-			return secontInput;
+		public int getSecondInput() {
+			return secondInput;
 		}
-		public void setSecontInput(int secontInput) {
-			this.secontInput = secontInput;
+		public void setSecondInput(int secontInput) {
+			this.secondInput = secontInput;
 		}
 	}
 
