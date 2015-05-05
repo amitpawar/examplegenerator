@@ -160,10 +160,10 @@ public class TupleGenerator {
 			if(operator.getOperatorType() == OperatorType.UNION){
 				int ctr = 0;
 				JUCCondition condition = operator.getJUCCondition();
-				DataSet<?> unionResult = 
+				/*DataSet<?> unionResult = 
 						sources[condition.getFirstInput()].union(sources[condition.getSecontInput()]);
 				unionResult.writeAsCsv(Config.outputPath()+"/TEST/downStream/CROSS"+ctr++,WriteMode.OVERWRITE);
-				dataStream = unionResult;
+				dataStream = unionResult;*/
 			}
 		}
 	}
