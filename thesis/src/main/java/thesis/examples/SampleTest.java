@@ -109,9 +109,9 @@ public class SampleTest {
 		OperatorTree tree = new OperatorTree(env, dataSources );
 		//tree.createOperatorTree();
 		TupleGenerator tg = new TupleGenerator(dataSources, tree.createOperatorTree());
-		//tg.generateTuples(env, dataSources, tree.createOperatorTree());
+		//tg.generateTuplesTest(env, dataSets, tree.createOperatorTree());
 		//printSet.writeAsCsv(Config.outputPath()+"/" + SampleTest.class.getName(), WriteMode.OVERWRITE);
-		env.execute();
+		//env.execute();
 	}
 
 	public static class PrintResult

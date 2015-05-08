@@ -54,7 +54,7 @@ public class TupleGenerator {
 				dataSources.get(1).getType();
 				DataSet<Tuple2<?, ?>> dataset = (DataSet<Tuple2<?, ?>>) dataSources.get(1).first(2);
 
-				Set<Tuple2<?, ?>> coll = new HashSet<Tuple2<?, ?>>();
+				Set coll = new HashSet();
 
 				RemoteCollectorImpl.collectLocal(dataset, coll);
 				// env.execute();
@@ -123,10 +123,15 @@ public class TupleGenerator {
 			//sources[i].writeAsCsv(Config.outputPath()+"/TEST/downStream/LOAD"+i,WriteMode.OVERWRITE);
 		}
 		
+		for(int ctr = operatorTree.size();ctr > 0; ctr-- ){
+			System.out.println("Something- "+operatorTree.get(ctr-1).getOperatorName());
+		}
+		
 		for(SingleOperator operator : operatorTree){
 			if(operator.getOperatorType() == OperatorType.LOAD){
 				int id = operator.getOperatorInputDataSetId().get(0);
 				sources[id] = sources[id].first(2);
+				operator.setExampleTuples(sources[id]);
 				sources[id].writeAsCsv(Config.outputPath()+"/TEST/downStream/LOAD"+id,WriteMode.OVERWRITE);
 			}
 			
@@ -137,6 +142,7 @@ public class TupleGenerator {
 						sources[condition.getFirstInput()].join(sources[condition.getSecondInput()])
 						.where(condition.getFirstInputKeyColumns())
 						.equalTo(condition.getSecondInputKeyColumns());
+				operator.setExampleTuples(joinResult);
 				joinResult.writeAsCsv(Config.outputPath()+"/TEST/downStream/JOIN"+ctr++,WriteMode.OVERWRITE);
 				dataStream = joinResult;
 			}
@@ -144,6 +150,7 @@ public class TupleGenerator {
 			if(operator.getOperatorType() == OperatorType.PROJECT){
 				int ctr = 0;
 				DataSet<?> projResult = dataStream.project(operator.getProjectColumns());
+				operator.setExampleTuples(projResult);
 				projResult.writeAsCsv(Config.outputPath()+"/TEST/downStream/PROJECT"+ctr++,WriteMode.OVERWRITE);
 				dataStream = projResult;
 			}
@@ -153,6 +160,7 @@ public class TupleGenerator {
 				JUCCondition condition = operator.getJUCCondition();
 				DataSet<?> crossResult = 
 						sources[condition.getFirstInput()].cross(sources[condition.getSecondInput()]);
+				operator.setExampleTuples(crossResult);
 				crossResult.writeAsCsv(Config.outputPath()+"/TEST/downStream/CROSS"+ctr++,WriteMode.OVERWRITE);
 				dataStream = crossResult;
 			}
@@ -163,7 +171,7 @@ public class TupleGenerator {
 				DataSet firstInput = sources[condition.getFirstInput()];
 				DataSet secondInput = sources[condition.getSecondInput()];
 				DataSet<?> unionResult = firstInput.union (secondInput);
-						//sources[condition.getFirstInput()].union(sources[condition.getSecondInput()]);
+				operator.setExampleTuples(unionResult);
 				unionResult.writeAsCsv(Config.outputPath()+"/TEST/downStream/UNION"+ctr++,WriteMode.OVERWRITE);
 				dataStream = unionResult;
 			}
