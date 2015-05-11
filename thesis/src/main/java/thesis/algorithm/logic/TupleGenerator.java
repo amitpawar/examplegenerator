@@ -36,13 +36,18 @@ public class TupleGenerator {
 
 	private List<InputDataSource> dataSources;
 	private List<SingleOperator> operatorTree;
+	private Set lineageGroup = new HashSet();
+	private ExecutionEnvironment env;
+	
 
 	public TupleGenerator(List<InputDataSource> dataSources,
-			List<SingleOperator> operatorTree) throws Exception {
+			List<SingleOperator> operatorTree, ExecutionEnvironment env) throws Exception {
 		this.dataSources = dataSources;
 		this.operatorTree = operatorTree;
+		this.env = env;
 		//generateTuples(this.dataSources, this.operatorTree);
 		downStreamPass(this.dataSources, this.operatorTree);
+		System.out.println(this.lineageGroup);
 	}
 
 	@SuppressWarnings("unchecked")
@@ -116,7 +121,7 @@ public class TupleGenerator {
 		}
 	}
 
-	public void downStreamPass(List<InputDataSource> dataSources,List<SingleOperator> operatorTree){
+	public void downStreamPass(List<InputDataSource> dataSources,List<SingleOperator> operatorTree) throws Exception{
 		
 		DataSet<?> dataStream = null ;
 		DataSet<?>[] sources = new DataSet<?>[dataSources.size()];
@@ -135,6 +140,8 @@ public class TupleGenerator {
 				sources[id] = sources[id].first(2);
 				operator.setExampleTuples(sources[id]);
 				sources[id].writeAsCsv(Config.outputPath()+"/TEST/downStream/LOAD"+id,WriteMode.OVERWRITE);
+				this.lineageGroup.add(sources[id].collect());
+				//this.lineageGroup.add(getCollectionForDataSet(sources[id], this.env));
 			}
 			
 			if(operator.getOperatorType() == OperatorType.JOIN){
@@ -147,6 +154,8 @@ public class TupleGenerator {
 				operator.setExampleTuples(joinResult);
 				joinResult.writeAsCsv(Config.outputPath()+"/TEST/downStream/JOIN"+ctr++,WriteMode.OVERWRITE);
 				dataStream = joinResult;
+				this.lineageGroup.add(joinResult.collect());
+				//this.lineageGroup.add(getCollectionForDataSet(joinResult, this.env));
 			}
 			
 			if(operator.getOperatorType() == OperatorType.PROJECT){
@@ -155,6 +164,8 @@ public class TupleGenerator {
 				operator.setExampleTuples(projResult);
 				projResult.writeAsCsv(Config.outputPath()+"/TEST/downStream/PROJECT"+ctr++,WriteMode.OVERWRITE);
 				dataStream = projResult;
+				this.lineageGroup.add(projResult.collect());
+				//this.lineageGroup.add(getCollectionForDataSet(projResult, this.env));
 			}
 			
 			if(operator.getOperatorType() == OperatorType.CROSS){
@@ -165,6 +176,8 @@ public class TupleGenerator {
 				operator.setExampleTuples(crossResult);
 				crossResult.writeAsCsv(Config.outputPath()+"/TEST/downStream/CROSS"+ctr++,WriteMode.OVERWRITE);
 				dataStream = crossResult;
+				this.lineageGroup.add(crossResult.collect());
+				//this.lineageGroup.add(getCollectionForDataSet(crossResult, this.env));
 			}
 			
 			if(operator.getOperatorType() == OperatorType.UNION){
@@ -176,6 +189,8 @@ public class TupleGenerator {
 				operator.setExampleTuples(unionResult);
 				unionResult.writeAsCsv(Config.outputPath()+"/TEST/downStream/UNION"+ctr++,WriteMode.OVERWRITE);
 				dataStream = unionResult;
+				this.lineageGroup.add(unionResult.collect());
+				//this.lineageGroup.add(getCollectionForDataSet(unionResult, this.env));
 			}
 		}
 	}
