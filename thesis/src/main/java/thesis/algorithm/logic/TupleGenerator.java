@@ -16,6 +16,7 @@ import org.apache.flink.api.java.io.CollectionInputFormat;
 import org.apache.flink.api.java.io.LocalCollectionOutputFormat;
 import org.apache.flink.api.java.io.RemoteCollectorConsumer;
 import org.apache.flink.api.java.io.RemoteCollectorImpl;
+import org.apache.flink.api.java.io.RemoteCollectorOutputFormat;
 import org.apache.flink.api.java.io.TypeSerializerInputFormat;
 import org.apache.flink.api.java.tuple.Tuple1;
 import org.apache.flink.api.java.tuple.Tuple2;
@@ -52,7 +53,7 @@ public class TupleGenerator {
 		for (SingleOperator operator : operatorTree) {
 			if (operator.getOperatorType() == OperatorType.LOAD) {
 				dataSources.get(1).getType();
-				DataSet<Tuple2<?, ?>> dataset = (DataSet<Tuple2<?, ?>>) dataSources.get(1).first(2);
+				DataSet dataset =  dataSources.get(1).first(2);
 
 				Set coll = new HashSet();
 
@@ -62,10 +63,11 @@ public class TupleGenerator {
 				Tuple2<?, ?> addtup = new Tuple2<String, String>("Test", "Test");
 				coll.add(addtup);
 				DataSet<Tuple2<?, ?>> newDS = env.fromCollection(coll);
-				newDS.print();
+				//newDS.print();
 				env.execute();
 				System.out.println("Set " + coll);
 				RemoteCollectorImpl.shutdownAll();
+				downStreamPass(this.dataSources, this.operatorTree);
 
 				if (dataSources.get(1).getType().getTypeClass().newInstance() instanceof Tuple2) {
 					// System.out.println(dataSources.get(1).getType().getTypeClass().newInstance());
@@ -210,5 +212,14 @@ public class TupleGenerator {
 		public boolean filter(Object arg0) throws Exception {
 			return !sampleSet.contains(arg0);
 		}
+	}
+	
+	@SuppressWarnings({ "unchecked", "rawtypes" })
+	public Collection getCollectionForDataSet(DataSet dataset, ExecutionEnvironment env) throws Exception{
+		Set collection = new HashSet();
+		RemoteCollectorImpl.collectLocal(dataset, collection);
+		env.execute();
+		RemoteCollectorImpl.shutdownAll();
+		return collection;
 	}
 }
