@@ -1,8 +1,10 @@
 package thesis.examples;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.regex.Pattern;
 
 import org.apache.flink.api.common.functions.FilterFunction;
@@ -111,7 +113,10 @@ public class SampleTest {
 		TupleGenerator tg = new TupleGenerator(dataSources, tree.createOperatorTree(), env);
 		//tg.generateTuplesTest(env, dataSets, tree.createOperatorTree());
 		//printSet.writeAsCsv(Config.outputPath()+"/" + SampleTest.class.getName(), WriteMode.OVERWRITE);
-		//env.execute();
+		env.execute();
+	
+		System.out.println(tg.readDownstreamExamplesIntoCollection("/home/amit/thesis/output/TEST/downStream"));
+		
 	}
 
 	public static class PrintResult

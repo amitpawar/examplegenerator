@@ -1,10 +1,16 @@
 package thesis.algorithm.logic;
 
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileReader;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import org.apache.flink.api.common.functions.FilterFunction;
@@ -38,7 +44,16 @@ public class TupleGenerator {
 	private List<SingleOperator> operatorTree;
 	private Set lineageGroup = new HashSet();
 	private ExecutionEnvironment env;
+	private List<DataSet> lineageAdds = new ArrayList<DataSet>();
 	
+
+	public List<DataSet> getLineageAdds() {
+		return lineageAdds;
+	}
+
+	public void setLineageAdds(List<DataSet> lineageAdds) {
+		this.lineageAdds = lineageAdds;
+	}
 
 	public TupleGenerator(List<InputDataSource> dataSources,
 			List<SingleOperator> operatorTree, ExecutionEnvironment env) throws Exception {
@@ -123,6 +138,7 @@ public class TupleGenerator {
 
 	public void downStreamPass(List<InputDataSource> dataSources,List<SingleOperator> operatorTree) throws Exception{
 		
+		int index = 0;
 		DataSet<?> dataStream = null ;
 		DataSet<?>[] sources = new DataSet<?>[dataSources.size()];
 		for (int i = 0; i < dataSources.size(); i++){
@@ -134,63 +150,61 @@ public class TupleGenerator {
 			System.out.println("Something- "+operatorTree.get(ctr-1).getOperatorName());
 		}
 		
-		for(SingleOperator operator : operatorTree){
+		//for(SingleOperator operator : operatorTree)
+		for(int ctr = 0; ctr < operatorTree.size();ctr++){
+			
+			SingleOperator operator = operatorTree.get(ctr);
 			if(operator.getOperatorType() == OperatorType.LOAD){
 				int id = operator.getOperatorInputDataSetId().get(0);
 				sources[id] = sources[id].first(2);
 				operator.setExampleTuples(sources[id]);
-				sources[id].writeAsCsv(Config.outputPath()+"/TEST/downStream/LOAD"+id,WriteMode.OVERWRITE);
-				this.lineageGroup.add(sources[id].collect());
-				//this.lineageGroup.add(getCollectionForDataSet(sources[id], this.env));
+				sources[id].writeAsCsv(Config.outputPath()+"/TEST/downStream/LOAD"+ctr,WriteMode.OVERWRITE);
+				this.lineageAdds.add(index++, sources[id]);
 			}
 			
 			if(operator.getOperatorType() == OperatorType.JOIN){
-				int ctr = 0;
+			
 				JUCCondition condition = operator.getJUCCondition();
 				DataSet<?> joinResult = 
 						sources[condition.getFirstInput()].join(sources[condition.getSecondInput()])
 						.where(condition.getFirstInputKeyColumns())
 						.equalTo(condition.getSecondInputKeyColumns());
 				operator.setExampleTuples(joinResult);
-				joinResult.writeAsCsv(Config.outputPath()+"/TEST/downStream/JOIN"+ctr++,WriteMode.OVERWRITE);
+				joinResult.writeAsCsv(Config.outputPath()+"/TEST/downStream/JOIN"+ctr,WriteMode.OVERWRITE);
 				dataStream = joinResult;
-				this.lineageGroup.add(joinResult.collect());
-				//this.lineageGroup.add(getCollectionForDataSet(joinResult, this.env));
+				this.lineageAdds.add(index++, joinResult);
 			}
 			
 			if(operator.getOperatorType() == OperatorType.PROJECT){
-				int ctr = 0;
+			
 				DataSet<?> projResult = dataStream.project(operator.getProjectColumns());
 				operator.setExampleTuples(projResult);
-				projResult.writeAsCsv(Config.outputPath()+"/TEST/downStream/PROJECT"+ctr++,WriteMode.OVERWRITE);
+				projResult.writeAsCsv(Config.outputPath()+"/TEST/downStream/PROJECT"+ctr,WriteMode.OVERWRITE);
 				dataStream = projResult;
-				this.lineageGroup.add(projResult.collect());
-				//this.lineageGroup.add(getCollectionForDataSet(projResult, this.env));
+				this.lineageAdds.add(index++, projResult);
 			}
 			
 			if(operator.getOperatorType() == OperatorType.CROSS){
-				int ctr = 0;
+			
 				JUCCondition condition = operator.getJUCCondition();
 				DataSet<?> crossResult = 
 						sources[condition.getFirstInput()].cross(sources[condition.getSecondInput()]);
 				operator.setExampleTuples(crossResult);
-				crossResult.writeAsCsv(Config.outputPath()+"/TEST/downStream/CROSS"+ctr++,WriteMode.OVERWRITE);
+				crossResult.writeAsCsv(Config.outputPath()+"/TEST/downStream/CROSS"+ctr,WriteMode.OVERWRITE);
 				dataStream = crossResult;
-				this.lineageGroup.add(crossResult.collect());
-				//this.lineageGroup.add(getCollectionForDataSet(crossResult, this.env));
+				this.lineageAdds.add(index++, crossResult);
 			}
 			
 			if(operator.getOperatorType() == OperatorType.UNION){
-				int ctr = 0;
+			
 				JUCCondition condition = operator.getJUCCondition();
 				DataSet firstInput = sources[condition.getFirstInput()];
 				DataSet secondInput = sources[condition.getSecondInput()];
 				DataSet<?> unionResult = firstInput.union (secondInput);
 				operator.setExampleTuples(unionResult);
-				unionResult.writeAsCsv(Config.outputPath()+"/TEST/downStream/UNION"+ctr++,WriteMode.OVERWRITE);
+				unionResult.writeAsCsv(Config.outputPath()+"/TEST/downStream/UNION"+ctr,WriteMode.OVERWRITE);
 				dataStream = unionResult;
-				this.lineageGroup.add(unionResult.collect());
-				//this.lineageGroup.add(getCollectionForDataSet(unionResult, this.env));
+				this.lineageAdds.add(index++, unionResult);
 			}
 		}
 	}
@@ -236,5 +250,39 @@ public class TupleGenerator {
 		env.execute();
 		RemoteCollectorImpl.shutdownAll();
 		return collection;
+	}
+	
+	public Map readDownstreamExamplesIntoCollection(String outputPath)
+			throws IOException {
+
+		Map<String, Collection> lineageMap = new HashMap<String, Collection>();
+		File outputDirectory = new File(outputPath);
+		String line;
+
+		for (File fileEntry : outputDirectory.listFiles()) {
+			if (fileEntry.isDirectory()) {
+				Set exampleSet = new HashSet();
+				for (File insideFile : fileEntry.listFiles()) {
+					
+					BufferedReader br = new BufferedReader(new FileReader(insideFile));
+					while ((line = br.readLine()) != null) {
+						exampleSet.add(line);
+					}
+					lineageMap.put(fileEntry.getName(), exampleSet);
+					br.close();
+				}
+
+			}
+			else if (fileEntry.isFile()){
+				Set exampleSet = new HashSet();
+				BufferedReader br = new BufferedReader(new FileReader(fileEntry));
+				while ((line = br.readLine()) != null) {
+					exampleSet.add(line);
+				}
+				lineageMap.put(fileEntry.getName(), exampleSet);
+				br.close();
+			}
+		}
+		return lineageMap;
 	}
 }
