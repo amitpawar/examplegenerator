@@ -1,7 +1,9 @@
 package thesis.examples;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -113,10 +115,12 @@ public class SampleTest {
 		TupleGenerator tg = new TupleGenerator(dataSources, tree.createOperatorTree(), env);
 		//tg.generateTuplesTest(env, dataSets, tree.createOperatorTree());
 		//printSet.writeAsCsv(Config.outputPath()+"/" + SampleTest.class.getName(), WriteMode.OVERWRITE);
-		env.execute();
-	
-		System.out.println(tg.readDownstreamExamplesIntoCollection("/home/amit/thesis/output/TEST/downStream"));
-		
+		//env.execute();
+		/*Set check =  (Set) tg.readDownstreamExamplesIntoCollection("/home/amit/thesis/output/TEST/downStream").get("LOAD4");
+		Iterator it = check.iterator();
+		while(it.hasNext())
+			System.out.println(it.next());*/
+		tg.getRecordLineage(tg.readDownstreamExamplesIntoCollection("/home/amit/thesis/output/TEST/downStream"));
 	}
 
 	public static class PrintResult

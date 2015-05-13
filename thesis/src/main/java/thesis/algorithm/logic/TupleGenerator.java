@@ -7,11 +7,15 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import org.apache.flink.api.common.functions.FilterFunction;
 import org.apache.flink.api.common.functions.RichFilterFunction;
@@ -263,7 +267,6 @@ public class TupleGenerator {
 			if (fileEntry.isDirectory()) {
 				Set exampleSet = new HashSet();
 				for (File insideFile : fileEntry.listFiles()) {
-					
 					BufferedReader br = new BufferedReader(new FileReader(insideFile));
 					while ((line = br.readLine()) != null) {
 						exampleSet.add(line);
@@ -284,5 +287,69 @@ public class TupleGenerator {
 			}
 		}
 		return lineageMap;
+	}
+	
+	public void getRecordLineage(Map lineageMap){
+		
+		Pattern integerOnly = Pattern.compile("\\d+");
+		List<Integer> opOrder = new ArrayList<Integer>();
+		List<List> lineages = new ArrayList<List>();
+		Set operatorSet = lineageMap.keySet();
+		Iterator opIt = operatorSet.iterator();
+		
+		while(opIt.hasNext()){
+			String operatorName = opIt.next().toString();
+			Matcher makeMatch = integerOnly.matcher(operatorName);
+			makeMatch.find();
+			opOrder.add(Integer.parseInt(makeMatch.group()));
+		}
+		
+		Collections.sort(opOrder, Collections.reverseOrder());
+		for(int id : opOrder){
+			Iterator nameIt = operatorSet.iterator();
+			while(nameIt.hasNext()){
+				String name = nameIt.next().toString();
+				if(name.contains(Integer.toString(id))){
+					Set examplesForThisOperator = (Set) lineageMap.get(name);
+					Iterator exIt = examplesForThisOperator.iterator();
+					while(exIt.hasNext()){
+						List lineage = new ArrayList();
+						String lineageLast = (String) exIt.next();
+						lineage.add(lineageLast);
+						lineages.add(lineage);
+						System.out.println(constructRecordLineage(lineageMap, opOrder, id, lineage, lineageLast));
+					}
+							
+				}
+			}
+		}
+		
+	}
+	
+	public List constructRecordLineage(Map lineageMap, List<Integer> opOrder,
+			int id, List lineageGroup, String lineageLast) {
+
+		for (int op : opOrder) {
+			if (op < id) {
+				Iterator keyIt = lineageMap.keySet().iterator();
+				while (keyIt.hasNext()) {
+					String keyName = keyIt.next().toString();
+					if (keyName.contains(Integer.toString(op))) {
+						Set examples = (Set) lineageMap.get(keyName);
+						Iterator it = examples.iterator();
+						while (it.hasNext()) {
+							String nextLineage = it.next().toString();
+							if (keyName.contains("LOAD")) {
+								nextLineage = "(" + nextLineage + ")";
+							}
+							if (nextLineage.contains(lineageLast)) {
+								lineageGroup.add(nextLineage);
+							}
+						}
+					}
+				}
+			}
+		}
+		return lineageGroup;
 	}
 }
