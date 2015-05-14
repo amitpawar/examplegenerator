@@ -36,6 +36,8 @@ import org.apache.flink.core.memory.DataInputView;
 import org.apache.flink.core.memory.DataOutputView;
 
 import scala.Array;
+import thesis.algorithm.semantics.EquivalenceClass;
+import thesis.algorithm.semantics.JoinEquivalenceClasses;
 import thesis.examples.Config;
 import thesis.input.datasources.InputDataSource;
 import thesis.input.operatortree.SingleOperator;
@@ -47,6 +49,7 @@ public class TupleGenerator {
 	private List<InputDataSource> dataSources;
 	private List<SingleOperator> operatorTree;
 	private Set lineageGroup = new HashSet();
+	private Map <String,SingleOperator> opTypeToOperator = new HashMap<String, SingleOperator>();
 	private ExecutionEnvironment env;
 	private List<DataSet> lineageAdds = new ArrayList<DataSet>();
 	
@@ -163,6 +166,7 @@ public class TupleGenerator {
 				sources[id] = sources[id].first(2);
 				operator.setExampleTuples(sources[id]);
 				sources[id].writeAsCsv(Config.outputPath()+"/TEST/downStream/LOAD"+ctr,WriteMode.OVERWRITE);
+				this.opTypeToOperator.put("LOAD"+ctr, operator);
 				this.lineageAdds.add(index++, sources[id]);
 			}
 			
@@ -175,6 +179,7 @@ public class TupleGenerator {
 						.equalTo(condition.getSecondInputKeyColumns());
 				operator.setExampleTuples(joinResult);
 				joinResult.writeAsCsv(Config.outputPath()+"/TEST/downStream/JOIN"+ctr,WriteMode.OVERWRITE);
+				this.opTypeToOperator.put("JOIN"+ctr, operator);
 				dataStream = joinResult;
 				this.lineageAdds.add(index++, joinResult);
 			}
@@ -184,6 +189,7 @@ public class TupleGenerator {
 				DataSet<?> projResult = dataStream.project(operator.getProjectColumns());
 				operator.setExampleTuples(projResult);
 				projResult.writeAsCsv(Config.outputPath()+"/TEST/downStream/PROJECT"+ctr,WriteMode.OVERWRITE);
+				this.opTypeToOperator.put("PROJECT"+ctr, operator);
 				dataStream = projResult;
 				this.lineageAdds.add(index++, projResult);
 			}
@@ -195,18 +201,19 @@ public class TupleGenerator {
 						sources[condition.getFirstInput()].cross(sources[condition.getSecondInput()]);
 				operator.setExampleTuples(crossResult);
 				crossResult.writeAsCsv(Config.outputPath()+"/TEST/downStream/CROSS"+ctr,WriteMode.OVERWRITE);
+				this.opTypeToOperator.put("CROSS"+ctr, operator);
 				dataStream = crossResult;
 				this.lineageAdds.add(index++, crossResult);
 			}
 			
 			if(operator.getOperatorType() == OperatorType.UNION){
-			
 				JUCCondition condition = operator.getJUCCondition();
 				DataSet firstInput = sources[condition.getFirstInput()];
 				DataSet secondInput = sources[condition.getSecondInput()];
 				DataSet<?> unionResult = firstInput.union (secondInput);
 				operator.setExampleTuples(unionResult);
 				unionResult.writeAsCsv(Config.outputPath()+"/TEST/downStream/UNION"+ctr,WriteMode.OVERWRITE);
+				this.opTypeToOperator.put("UNION"+ctr, operator);
 				dataStream = unionResult;
 				this.lineageAdds.add(index++, unionResult);
 			}
@@ -265,7 +272,7 @@ public class TupleGenerator {
 
 		for (File fileEntry : outputDirectory.listFiles()) {
 			if (fileEntry.isDirectory()) {
-				Set exampleSet = new HashSet();
+				List exampleSet = new ArrayList();
 				for (File insideFile : fileEntry.listFiles()) {
 					BufferedReader br = new BufferedReader(new FileReader(insideFile));
 					while ((line = br.readLine()) != null) {
@@ -277,7 +284,7 @@ public class TupleGenerator {
 
 			}
 			else if (fileEntry.isFile()){
-				Set exampleSet = new HashSet();
+				List exampleSet = new ArrayList();
 				BufferedReader br = new BufferedReader(new FileReader(fileEntry));
 				while ((line = br.readLine()) != null) {
 					exampleSet.add(line);
@@ -288,6 +295,45 @@ public class TupleGenerator {
 		}
 		return lineageMap;
 	}
+	
+	public void setEquivalenceClasses(Map lineageMap){
+		
+		Iterator operatorIt = lineageMap.keySet().iterator();
+		
+		while(operatorIt.hasNext()){
+			String opName = operatorIt.next().toString();
+			
+			if(opName.contains("LOAD")){
+				List loadExamples = (List)lineageMap.get(opName);
+				//JoinEquivalenceClasses joinEqClasses = new JoinEquivalenceClasses();
+				EquivalenceClass loadEq = new EquivalenceClass("LOAD");
+				if(!loadExamples.isEmpty()){
+					loadEq.setHasExample(true);
+				}
+				else
+					loadEq.setHasExample(false);
+				
+				SingleOperator load = this.opTypeToOperator.get(opName);
+				load.setEquivalenceClass(loadEq);
+			}
+			
+			if(opName.contains("JOIN")){
+				List joinExamples = (List)lineageMap.get(opName);
+				JoinEquivalenceClasses joinEqClasses = new JoinEquivalenceClasses();
+				if(!joinExamples.isEmpty()){
+					joinEqClasses.getJoinedExample().setHasExample(true);
+				}
+				else
+					joinEqClasses.getJoinedExample().setHasExample(false);
+				
+				SingleOperator join = this.opTypeToOperator.get(opName);
+				join.setEquivalenceClass(joinEqClasses.getJoinedExample());
+				
+			}
+			
+		}
+		checkEqclasses();
+	}	
 	
 	public void getRecordLineage(Map lineageMap){
 		
@@ -310,7 +356,7 @@ public class TupleGenerator {
 			while(nameIt.hasNext()){
 				String name = nameIt.next().toString();
 				if(name.contains(Integer.toString(id))){
-					Set examplesForThisOperator = (Set) lineageMap.get(name);
+					List examplesForThisOperator = (List) lineageMap.get(name);
 					Iterator exIt = examplesForThisOperator.iterator();
 					while(exIt.hasNext()){
 						List lineage = new ArrayList();
@@ -323,6 +369,7 @@ public class TupleGenerator {
 				}
 			}
 		}
+		setEquivalenceClasses(lineageMap);
 		
 	}
 	
@@ -335,7 +382,7 @@ public class TupleGenerator {
 				while (keyIt.hasNext()) {
 					String keyName = keyIt.next().toString();
 					if (keyName.contains(Integer.toString(op))) {
-						Set examples = (Set) lineageMap.get(keyName);
+						List examples = (List) lineageMap.get(keyName);
 						Iterator it = examples.iterator();
 						while (it.hasNext()) {
 							String nextLineage = it.next().toString();
@@ -351,5 +398,12 @@ public class TupleGenerator {
 			}
 		}
 		return lineageGroup;
+	}
+	
+	public void checkEqclasses(){
+		for(SingleOperator op: this.operatorTree){
+			if(op.getOperatorType() == OperatorType.LOAD || op.getOperatorType() == OperatorType.JOIN)
+			System.out.println(op.getEquivalenceClass().hasExample());
+		}
 	}
 }

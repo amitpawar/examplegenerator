@@ -6,6 +6,22 @@ public class UnionCrossEquivalenceClasses {
 	
 	private List<EquivalenceClass> unionEquivalenceClasses;
 	EquivalenceClass firstTableExample;
+	public EquivalenceClass getFirstTableExample() {
+		return firstTableExample;
+	}
+
+	public void setFirstTableExample(EquivalenceClass firstTableExample) {
+		this.firstTableExample = firstTableExample;
+	}
+
+	public EquivalenceClass getSecondTableExample() {
+		return secondTableExample;
+	}
+
+	public void setSecondTableExample(EquivalenceClass secondTableExample) {
+		this.secondTableExample = secondTableExample;
+	}
+
 	EquivalenceClass secondTableExample;
 	
 	public UnionCrossEquivalenceClasses() {

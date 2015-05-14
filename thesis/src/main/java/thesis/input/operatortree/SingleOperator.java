@@ -6,6 +6,8 @@ import org.apache.flink.api.common.operators.Operator;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.api.java.DataSet;
 
+import thesis.algorithm.semantics.EquivalenceClass;
+
 public class SingleOperator {
 	
 	private String name;
@@ -20,8 +22,17 @@ public class SingleOperator {
 	private List<DataSet<?>> operatorDataSets;
 	private DataSet<?> exampleTuples;
 	private int[] projectColumns;
+	private EquivalenceClass equivalenceClass;
 	
 	
+
+	public EquivalenceClass getEquivalenceClass() {
+		return equivalenceClass;
+	}
+
+	public void setEquivalenceClass(EquivalenceClass equivalenceClass) {
+		this.equivalenceClass = equivalenceClass;
+	}
 
 	public int[] getProjectColumns() {
 		return projectColumns;

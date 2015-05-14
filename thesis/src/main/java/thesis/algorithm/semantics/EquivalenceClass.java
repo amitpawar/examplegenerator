@@ -4,7 +4,7 @@ public class EquivalenceClass {
 	
 	private String name;
 	private int dataSetCount;
-	private boolean hasExample;
+	private boolean hasExample = false;
 	
 	public EquivalenceClass(String className) {
 		this.name = className;
