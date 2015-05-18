@@ -120,7 +120,7 @@ public class SampleTest {
 		Iterator it = check.iterator();
 		while(it.hasNext())
 			System.out.println(it.next());*/
-		tg.getRecordLineage(tg.readDownstreamExamplesIntoCollection("/home/amit/thesis/output/TEST/downStream"));
+		//tg.getRecordLineage(tg.readDownstreamExamplesIntoCollection("/home/amit/thesis/output/TEST/downStream"));
 	}
 
 	public static class PrintResult

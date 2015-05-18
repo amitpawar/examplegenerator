@@ -70,6 +70,8 @@ public class TupleGenerator {
 		this.env = env;
 		//generateTuples(this.dataSources, this.operatorTree);
 		downStreamPass(this.dataSources, this.operatorTree);
+		getRecordLineage(readDownstreamExamplesIntoCollection("/home/amit/thesis/output/TEST/downStream"));
+		upStreamPass(this.operatorTree);
 		System.out.println(this.lineageGroup);
 	}
 
@@ -217,12 +219,15 @@ public class TupleGenerator {
 		}
 	}
 	
-	public void upStreamPass(List<SingleOperator> operatorTree){
+	public void upStreamPass(List<SingleOperator> operatorTree) throws Exception{
 		
 		for(int ctr = operatorTree.size();ctr > 0; ctr-- ){
-			for(EquivalenceClass eqClass : operatorTree.get(ctr - 1).getEquivalenceClasses()){
+			SingleOperator operator = operatorTree.get(ctr - 1);
+			if(operator.getEquivalenceClasses() !=  null)
+			for(EquivalenceClass eqClass : operator.getEquivalenceClasses()){
 				if(!eqClass.hasExample()){
-					
+					DataSet constraintRecord = createConstraintRecords(operator);
+					System.out.println(constraintRecord);
 				}
 			}
 				
@@ -244,22 +249,6 @@ public class TupleGenerator {
 
 	}
 
-
-	public static class TupleFilter extends RichFilterFunction{
-
-		private Collection<?> sampleSet;
-		
-		@Override
-		public void open(Configuration parameters) throws Exception {
-			this.sampleSet = getRuntimeContext().getBroadcastVariable("filterset");
-		}
-		
-		@Override
-		public boolean filter(Object arg0) throws Exception {
-			return !sampleSet.contains(arg0);
-		}
-	}
-	
 	@SuppressWarnings({ "unchecked", "rawtypes" })
 	public Collection getCollectionForDataSet(DataSet dataset, ExecutionEnvironment env) throws Exception{
 		Set collection = new HashSet();
@@ -418,5 +407,48 @@ public class TupleGenerator {
 			eqClassMap.put(eqClass.getName(), eqClass.hasExample());
 		}
 		return eqClassMap;
+	}
+	
+	public DataSet createConstraintRecords(SingleOperator operator){
+		DataSet dataSetToReturn = new DataSet(this.env, operator.getOperatorOutputType()){};
+		
+		
+		
+		
+		return dataSetToReturn;
+	}
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	/////////////////////////////
+	
+	public static class TupleFilter extends RichFilterFunction{
+
+		private Collection<?> sampleSet;
+		
+		@Override
+		public void open(Configuration parameters) throws Exception {
+			this.sampleSet = getRuntimeContext().getBroadcastVariable("filterset");
+		}
+		
+		@Override
+		public boolean filter(Object arg0) throws Exception {
+			return !sampleSet.contains(arg0);
+		}
 	}
 }
