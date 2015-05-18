@@ -19,6 +19,7 @@ import java.util.regex.Pattern;
 
 import org.apache.flink.api.common.functions.FilterFunction;
 import org.apache.flink.api.common.functions.RichFilterFunction;
+import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.api.common.typeutils.TypeSerializer;
 import org.apache.flink.api.java.DataSet;
 import org.apache.flink.api.java.ExecutionEnvironment;
@@ -225,9 +226,9 @@ public class TupleGenerator {
 			SingleOperator operator = operatorTree.get(ctr - 1);
 			if(operator.getEquivalenceClasses() !=  null)
 			for(EquivalenceClass eqClass : operator.getEquivalenceClasses()){
-				if(!eqClass.hasExample()){
+				if(eqClass.hasExample()){
 					DataSet constraintRecord = createConstraintRecords(operator);
-					System.out.println(constraintRecord);
+					//System.out.println(constraintRecord);
 				}
 			}
 				
@@ -411,9 +412,9 @@ public class TupleGenerator {
 	
 	public DataSet createConstraintRecords(SingleOperator operator){
 		DataSet dataSetToReturn = new DataSet(this.env, operator.getOperatorOutputType()){};
+		TypeInformation outputType = operator.getOperatorOutputType();
 		
-		
-		
+		System.out.println(outputType);
 		
 		return dataSetToReturn;
 	}
