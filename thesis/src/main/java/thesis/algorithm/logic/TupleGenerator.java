@@ -38,6 +38,7 @@ import org.apache.flink.core.memory.DataOutputView;
 import scala.Array;
 import thesis.algorithm.semantics.EquivalenceClass;
 import thesis.algorithm.semantics.JoinEquivalenceClasses;
+import thesis.algorithm.semantics.LoadEquivalenceClasses;
 import thesis.examples.Config;
 import thesis.input.datasources.InputDataSource;
 import thesis.input.operatortree.SingleOperator;
@@ -153,10 +154,6 @@ public class TupleGenerator {
 			//sources[i].writeAsCsv(Config.outputPath()+"/TEST/downStream/LOAD"+i,WriteMode.OVERWRITE);
 		}
 		
-		for(int ctr = operatorTree.size();ctr > 0; ctr-- ){
-			System.out.println("Something- "+operatorTree.get(ctr-1).getOperatorName());
-		}
-		
 		//for(SingleOperator operator : operatorTree)
 		for(int ctr = 0; ctr < operatorTree.size();ctr++){
 			
@@ -220,8 +217,17 @@ public class TupleGenerator {
 		}
 	}
 	
-	public void upStreamPass(){
+	public void upStreamPass(List<SingleOperator> operatorTree){
 		
+		for(int ctr = operatorTree.size();ctr > 0; ctr-- ){
+			for(EquivalenceClass eqClass : operatorTree.get(ctr - 1).getEquivalenceClasses()){
+				if(!eqClass.hasExample()){
+					
+				}
+			}
+				
+			
+		}
 	}
 	
 	public void pruneTuples(){
@@ -305,16 +311,19 @@ public class TupleGenerator {
 			
 			if(opName.contains("LOAD")){
 				List loadExamples = (List)lineageMap.get(opName);
-				//JoinEquivalenceClasses joinEqClasses = new JoinEquivalenceClasses();
-				EquivalenceClass loadEq = new EquivalenceClass("LOAD");
+				LoadEquivalenceClasses loadEqClasses = new LoadEquivalenceClasses();
+				
 				if(!loadExamples.isEmpty()){
-					loadEq.setHasExample(true);
+					loadEqClasses.getLoadExample().setHasExample(true);
 				}
 				else
-					loadEq.setHasExample(false);
+					loadEqClasses.getLoadExample().setHasExample(false);
 				
 				SingleOperator load = this.opTypeToOperator.get(opName);
-				load.setEquivalenceClass(loadEq);
+				List<EquivalenceClass> eqClass = new ArrayList<EquivalenceClass>();
+				eqClass.add(loadEqClasses.getLoadExample());
+				load.setEquivalenceClasses(eqClass);
+				System.out.println(checkEqclasses(load));
 			}
 			
 			if(opName.contains("JOIN")){
@@ -327,12 +336,15 @@ public class TupleGenerator {
 					joinEqClasses.getJoinedExample().setHasExample(false);
 				
 				SingleOperator join = this.opTypeToOperator.get(opName);
-				join.setEquivalenceClass(joinEqClasses.getJoinedExample());
-				
+				List<EquivalenceClass> eqClass = new ArrayList<EquivalenceClass>();
+				eqClass.add(joinEqClasses.getJoinedExample());
+				join.setEquivalenceClasses(eqClass);
+				System.out.println(checkEqclasses(join));
 			}
 			
 		}
-		checkEqclasses();
+	
+		
 	}	
 	
 	public void getRecordLineage(Map lineageMap){
@@ -400,10 +412,11 @@ public class TupleGenerator {
 		return lineageGroup;
 	}
 	
-	public void checkEqclasses(){
-		for(SingleOperator op: this.operatorTree){
-			if(op.getOperatorType() == OperatorType.LOAD || op.getOperatorType() == OperatorType.JOIN)
-			System.out.println(op.getEquivalenceClass().hasExample());
+	public Map checkEqclasses(SingleOperator op){
+		Map<String,Boolean> eqClassMap = new HashMap<String, Boolean>();
+		for(EquivalenceClass eqClass : op.getEquivalenceClasses()){
+			eqClassMap.put(eqClass.getName(), eqClass.hasExample());
 		}
+		return eqClassMap;
 	}
 }

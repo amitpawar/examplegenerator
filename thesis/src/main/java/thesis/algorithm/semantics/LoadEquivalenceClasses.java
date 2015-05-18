@@ -1,23 +1,24 @@
 package thesis.algorithm.semantics;
 
+import java.util.ArrayList;
 import java.util.List;
 
 public class LoadEquivalenceClasses {
 	
-	private List<EquivalenceClass> loadEquivalenceClasses;
-	EquivalenceClass baseTableExample;
+	private List<EquivalenceClass> loadEquivalenceClasses = new ArrayList<EquivalenceClass>();
+	EquivalenceClass loadExample;
 	
-	public EquivalenceClass getBaseTableExample() {
-		return baseTableExample;
+	public EquivalenceClass getLoadExample() {
+		return loadExample;
 	}
 
-	public void setBaseTableExample(EquivalenceClass baseTableExample) {
-		this.baseTableExample = baseTableExample;
+	public void setLoadExample(EquivalenceClass loadExample) {
+		this.loadExample = loadExample;
 	}
 
 	public LoadEquivalenceClasses() {
-		this.baseTableExample = new EquivalenceClass("BaseTableExample");
-		this.loadEquivalenceClasses.add(baseTableExample);
+		this.loadExample = new EquivalenceClass("LoadExample");
+		this.loadEquivalenceClasses.add(loadExample);
 	}
 
 }

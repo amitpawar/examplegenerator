@@ -22,16 +22,17 @@ public class SingleOperator {
 	private List<DataSet<?>> operatorDataSets;
 	private DataSet<?> exampleTuples;
 	private int[] projectColumns;
-	private EquivalenceClass equivalenceClass;
+	private List<EquivalenceClass> equivalenceClasses;
 	
 	
 
-	public EquivalenceClass getEquivalenceClass() {
-		return equivalenceClass;
+
+	public List<EquivalenceClass> getEquivalenceClasses() {
+		return equivalenceClasses;
 	}
 
-	public void setEquivalenceClass(EquivalenceClass equivalenceClass) {
-		this.equivalenceClass = equivalenceClass;
+	public void setEquivalenceClasses(List<EquivalenceClass> equivalenceClasses) {
+		this.equivalenceClasses = equivalenceClasses;
 	}
 
 	public int[] getProjectColumns() {
