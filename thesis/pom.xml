@@ -10,6 +10,7 @@
 	<properties>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 		<mahout.version>0.9</mahout.version>
+		<flink.version>0.9.0-milestone-1-hadoop1</flink.version>
 	</properties>
 
 	<dependencies>
@@ -48,22 +49,22 @@
 		<dependency>
 			<groupId>org.apache.flink</groupId>
 			<artifactId>flink-optimizer</artifactId>
-			<version>0.9.0-milestone-1-hadoop1</version>
+			<version>${flink.version}</version>
 		</dependency>
 		<dependency>
 			<groupId>org.apache.flink</groupId>
 			<artifactId>flink-java</artifactId>
-			<version>0.9.0-milestone-1-hadoop1</version>
+			<version>${flink.version}</version>
 		</dependency>
 		<dependency>
 			<groupId>org.apache.flink</groupId>
 			<artifactId>flink-runtime</artifactId>
-			<version>0.9.0-milestone-1-hadoop1</version>
+			<version>${flink.version}</version>
 		</dependency>
 		<dependency>
 			<groupId>org.apache.flink</groupId>
 			<artifactId>flink-core</artifactId>
-			<version>0.9.0-milestone-1-hadoop1</version>
+			<version>${flink.version}</version>
 		</dependency>
 		<dependency>
 			<groupId>org.apache.flink</groupId>
