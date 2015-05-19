@@ -20,6 +20,7 @@ import java.util.regex.Pattern;
 import org.apache.flink.api.common.functions.FilterFunction;
 import org.apache.flink.api.common.functions.RichFilterFunction;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
+import org.apache.flink.api.common.typeutils.CompositeType;
 import org.apache.flink.api.common.typeutils.TypeSerializer;
 import org.apache.flink.api.java.DataSet;
 import org.apache.flink.api.java.ExecutionEnvironment;
@@ -29,6 +30,7 @@ import org.apache.flink.api.java.io.RemoteCollectorConsumer;
 import org.apache.flink.api.java.io.RemoteCollectorImpl;
 import org.apache.flink.api.java.io.RemoteCollectorOutputFormat;
 import org.apache.flink.api.java.io.TypeSerializerInputFormat;
+import org.apache.flink.api.java.tuple.Tuple;
 import org.apache.flink.api.java.tuple.Tuple1;
 import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.flink.configuration.Configuration;
@@ -410,11 +412,23 @@ public class TupleGenerator {
 		return eqClassMap;
 	}
 	
-	public DataSet createConstraintRecords(SingleOperator operator){
+	public DataSet createConstraintRecords(SingleOperator operator) throws InstantiationException, IllegalAccessException{
 		DataSet dataSetToReturn = new DataSet(this.env, operator.getOperatorOutputType()){};
 		TypeInformation outputType = operator.getOperatorOutputType();
 		
-		System.out.println(outputType);
+		if(outputType.isTupleType())
+			System.out.println(outputType+" "+outputType.getTotalFields());
+		if(outputType instanceof CompositeType){
+			System.out.println("Composite");
+			System.out.println("AMIT "+((CompositeType)outputType).getTypeAt(0));
+		}
+		else
+			System.out.println("Non Composite");
+		
+		//System.out.println(outputType.getGenericParameters());
+		
+		Tuple newTup = (Tuple) outputType.getTypeClass().newInstance();
+		System.out.println("TEST -"+newTup.getArity() +newTup.toString());
 		
 		return dataSetToReturn;
 	}
