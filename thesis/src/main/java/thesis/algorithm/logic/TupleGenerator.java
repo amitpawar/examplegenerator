@@ -189,7 +189,7 @@ public class TupleGenerator {
 			
 			if(operator.getOperatorType() == OperatorType.PROJECT){
 			
-				DataSet<?> projResult = dataStream.project(operator.getProjectColumns());
+				DataSet projResult = dataStream.project(operator.getProjectColumns());
 				operator.setExampleTuples(projResult);
 				projResult.writeAsCsv(Config.outputPath()+"/TEST/downStream/PROJECT"+ctr,WriteMode.OVERWRITE);
 				this.opTypeToOperator.put("PROJECT"+ctr, operator);
