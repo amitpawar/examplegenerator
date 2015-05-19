@@ -11,6 +11,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -343,7 +344,7 @@ public class TupleGenerator {
 		
 		Pattern integerOnly = Pattern.compile("\\d+");
 		List<Integer> opOrder = new ArrayList<Integer>();
-		List<List> lineages = new ArrayList<List>();
+		List<LinkedList> lineages = new ArrayList<LinkedList>();
 		Set operatorSet = lineageMap.keySet();
 		Iterator opIt = operatorSet.iterator();
 		
@@ -363,7 +364,7 @@ public class TupleGenerator {
 					List examplesForThisOperator = (List) lineageMap.get(name);
 					Iterator exIt = examplesForThisOperator.iterator();
 					while(exIt.hasNext()){
-						List lineage = new ArrayList();
+						LinkedList lineage = new LinkedList();
 						String lineageLast = (String) exIt.next();
 						lineage.add(lineageLast);
 						lineages.add(lineage);
@@ -378,7 +379,7 @@ public class TupleGenerator {
 	}
 	
 	public List constructRecordLineage(Map lineageMap, List<Integer> opOrder,
-			int id, List lineageGroup, String lineageLast) {
+			int id, LinkedList lineageGroup, String lineageLast) {
 
 		for (int op : opOrder) {
 			if (op < id) {
@@ -393,8 +394,9 @@ public class TupleGenerator {
 							if (keyName.contains("LOAD")) {
 								nextLineage = "(" + nextLineage + ")";
 							}
-							if (nextLineage.contains(lineageLast)) {
-								lineageGroup.add(nextLineage);
+							if (nextLineage.contains(lineageLast) || lineageLast.contains(nextLineage)) {
+								//lineageGroup.add(nextLineage);
+								lineageGroup.addFirst(nextLineage);
 							}
 						}
 					}
