@@ -420,28 +420,7 @@ public class TupleGenerator {
 		TypeInformation outputType = operator.getOperatorOutputType();
         System.out.println(outputType);
         drillToBasicType(outputType);
-	/*
-		if(outputType.isTupleType())
-			System.out.println(outputType+" "+outputType.getTotalFields());
-		if(outputType instanceof CompositeType){
-			System.out.println("Composite");
-			for(int ctr = 0; ctr < outputType.getArity();ctr++){
-				if(((CompositeType) outputType).getTypeAt(ctr).isTupleType()){
-					System.out.println();
-				}
-                else ((CompositeType) outputType).getTypeAt(ctr).isBasicType()
-				    System.out.println("Basic Type "+((CompositeType) outputType).getTypeAt(ctr));
-			}
 
-		}
-		else
-			System.out.println("Non Composite");
-		
-		//System.out.println(outputType.getGenericParameters());
-		
-		Tuple newTup = (Tuple) outputType.getTypeClass().newInstance();
-		System.out.println("TEST -"+newTup.getArity() +newTup.toString());
-		*/
 		return dataSetToReturn;
 	}
 	
