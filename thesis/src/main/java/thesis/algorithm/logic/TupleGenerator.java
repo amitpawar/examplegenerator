@@ -18,6 +18,7 @@ import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import org.apache.flink.api.common.ExecutionConfig;
 import org.apache.flink.api.common.functions.FilterFunction;
 import org.apache.flink.api.common.functions.RichFilterFunction;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
@@ -417,12 +418,21 @@ public class TupleGenerator {
 	public DataSet createConstraintRecords(SingleOperator operator) throws InstantiationException, IllegalAccessException{
 		DataSet dataSetToReturn = new DataSet(this.env, operator.getOperatorOutputType()){};
 		TypeInformation outputType = operator.getOperatorOutputType();
-		
+        System.out.println(outputType);
+        drillToBasicType(outputType);
+	/*
 		if(outputType.isTupleType())
 			System.out.println(outputType+" "+outputType.getTotalFields());
 		if(outputType instanceof CompositeType){
 			System.out.println("Composite");
-			System.out.println("AMIT "+((CompositeType)outputType).getTypeAt(0));
+			for(int ctr = 0; ctr < outputType.getArity();ctr++){
+				if(((CompositeType) outputType).getTypeAt(ctr).isTupleType()){
+					System.out.println();
+				}
+                else ((CompositeType) outputType).getTypeAt(ctr).isBasicType()
+				    System.out.println("Basic Type "+((CompositeType) outputType).getTypeAt(ctr));
+			}
+
 		}
 		else
 			System.out.println("Non Composite");
@@ -431,13 +441,21 @@ public class TupleGenerator {
 		
 		Tuple newTup = (Tuple) outputType.getTypeClass().newInstance();
 		System.out.println("TEST -"+newTup.getArity() +newTup.toString());
-		
+		*/
 		return dataSetToReturn;
 	}
 	
 	
 	
-	
+	public void drillToBasicType(TypeInformation typeInformation){
+
+        for(int ctr = 0;ctr < typeInformation.getArity();ctr++)
+        if(((CompositeType)typeInformation).getTypeAt(ctr).isTupleType())
+            drillToBasicType(((CompositeType) typeInformation).getTypeAt(ctr));
+
+        else
+            System.out.println("Recursive -"+((CompositeType) typeInformation).getTypeAt(ctr));
+    }
 	
 	
 	
