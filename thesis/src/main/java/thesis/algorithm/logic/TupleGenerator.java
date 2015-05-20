@@ -419,21 +419,26 @@ public class TupleGenerator {
 		DataSet dataSetToReturn = new DataSet(this.env, operator.getOperatorOutputType()){};
 		TypeInformation outputType = operator.getOperatorOutputType();
         System.out.println(outputType);
-        drillToBasicType(outputType);
+        drillToBasicType(outputType,dataSetToReturn);
 
 		return dataSetToReturn;
 	}
 	
 	
 	
-	public void drillToBasicType(TypeInformation typeInformation){
-
+	public void drillToBasicType(TypeInformation typeInformation,DataSet constraitRecord) throws InstantiationException,IllegalAccessException{
+        Tuple testTuple = null;
         for(int ctr = 0;ctr < typeInformation.getArity();ctr++)
         if(((CompositeType)typeInformation).getTypeAt(ctr).isTupleType())
-            drillToBasicType(((CompositeType) typeInformation).getTypeAt(ctr));
+            drillToBasicType(((CompositeType) typeInformation).getTypeAt(ctr),constraitRecord);
 
-        else
+        else{
             System.out.println("Recursive -"+((CompositeType) typeInformation).getTypeAt(ctr));
+            testTuple = (Tuple) typeInformation.getTypeClass().newInstance();
+            testTuple.setField("TESTING",ctr);
+        }
+        System.out.println(testTuple);
+
     }
 	
 	
