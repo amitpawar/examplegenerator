@@ -158,7 +158,7 @@ public class TupleGenerator {
 		DataSet<?>[] sources = new DataSet<?>[dataSources.size()];
 		for (int i = 0; i < dataSources.size(); i++){
 			sources[i] = dataSources.get(i).getDataSet();
-			//sources[i].writeAsCsv(Config.outputPath()+"/TEST/downStream/LOAD"+i,WriteMode.OVERWRITE);
+			sources[i].writeAsCsv(Config.outputPath()+"/TEST/downStream/SOURCE"+i,WriteMode.OVERWRITE);
 		}
 		
 		//for(SingleOperator operator : operatorTree)
@@ -419,25 +419,28 @@ public class TupleGenerator {
 		DataSet dataSetToReturn = new DataSet(this.env, operator.getOperatorOutputType()){};
 		TypeInformation outputType = operator.getOperatorOutputType();
         System.out.println(outputType);
-        drillToBasicType(outputType,dataSetToReturn);
+        System.out.println(drillToBasicType(outputType));
 
 		return dataSetToReturn;
 	}
 	
 	
 	
-	public void drillToBasicType(TypeInformation typeInformation,DataSet constraitRecord) throws InstantiationException,IllegalAccessException{
-        Tuple testTuple = null;
+	public Tuple drillToBasicType(TypeInformation typeInformation) throws IllegalAccessException, InstantiationException {
+        Tuple  testTuple = (Tuple) typeInformation.getTypeClass().newInstance();
         for(int ctr = 0;ctr < typeInformation.getArity();ctr++)
         if(((CompositeType)typeInformation).getTypeAt(ctr).isTupleType())
-            drillToBasicType(((CompositeType) typeInformation).getTypeAt(ctr),constraitRecord);
+            testTuple.setField(drillToBasicType(((CompositeType) typeInformation).getTypeAt(ctr)),ctr);
 
         else{
+            String name = ((CompositeType) typeInformation).getTypeAt(ctr).toString();
             System.out.println("Recursive -"+((CompositeType) typeInformation).getTypeAt(ctr));
-            testTuple = (Tuple) typeInformation.getTypeClass().newInstance();
-            testTuple.setField("TESTING",ctr);
+
+            testTuple.setField(name,ctr);
         }
-        System.out.println(testTuple);
+        //System.out.println("Amit "+testTuple);
+        return testTuple;
+
 
     }
 	
