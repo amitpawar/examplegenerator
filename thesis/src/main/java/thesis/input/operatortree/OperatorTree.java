@@ -171,9 +171,11 @@ public class OperatorTree {
 		if (operator instanceof PlanProjectOperator) {
 			if (!isVisited(operator)) {
 				opToAdd.setOperatorType(OperatorType.PROJECT);
-				
 				opToAdd.setProjectColumns(getProjectArray(operator.getName()));
-				addOperatorDetails(opToAdd, operator, inputDatasets);
+                if(this.isDualInputOperatorUsed)
+                    addOperatorDetails(opToAdd, operator, inputDatasets);
+                else
+                    addOperatorDetails(opToAdd,operator,sourceId);
 			}
 		}
 
@@ -181,7 +183,10 @@ public class OperatorTree {
 			if (operator.getName().contains("Distinct")) {
 				if (!isVisited(operator)) {
 					opToAdd.setOperatorType(OperatorType.DISTINCT);
-					addOperatorDetails(opToAdd, operator, inputDatasets);
+                    if(this.isDualInputOperatorUsed)
+					    addOperatorDetails(opToAdd, operator, inputDatasets);
+                    else
+                        addOperatorDetails(opToAdd,operator,sourceId);
 				}
 			}
 		}
@@ -223,7 +228,7 @@ public class OperatorTree {
 		
 		JUCCondition joinPred = opToAdd.new JUCCondition();
 		
-		joinPred.setFirstInput(InputNum.FIRST.getValue());
+		joinPred.setFirstInput(InputNum.FIRST.getValue()); //todo : wrong logic
 		joinPred.setSecondInput(InputNum.SECOND.getValue());
 		joinPred.setFirstInputKeyColumns(firstInputKeys);
 		joinPred.setSecondInputKeyColumns(secondInputKeys);
@@ -238,7 +243,7 @@ public class OperatorTree {
 		JUCCondition condition = opToAdd.new JUCCondition();
 		condition.setFirstInput(InputNum.FIRST.getValue());
 		condition.setSecondInput(InputNum.SECOND.getValue());
-		
+		condition.setOperatorType(opToAdd.getOperatorType());
 		opToAdd.setJUCCondition(condition);
 		return opToAdd;
 	}
@@ -263,19 +268,22 @@ public class OperatorTree {
 				for(TypeInformation<?> inputType : this.operatorTree.get(i).getOperatorInputType())
 					System.out.println(inputType+" ");
 			}*/
-			System.out.println("NODE :");
-			System.out.println("Input Dataset - " +this.operatorTree.get(i).getOperatorInputDataSetId().get(0));
+			System.out.println("NODE :"+this.operatorTree.get(i).getOperatorType());
+			System.out.println("Input Dataset - " +this.operatorTree.get(i).getOperatorInputDataSetId());
 			System.out.println(this.operatorTree.get(i).getOperatorName());// .getOperatorType().name());
-			System.out.println(this.operatorTree.get(i).getOperatorType().name());
 			//System.out.println("OUTPUT ");
 			//System.out.println(this.operatorTree.get(i).getOperatorOutputType().toString());
 			if(this.operatorTree.get(i).getJUCCondition() != null)
 			{
 				if(this.operatorTree.get(i).getJUCCondition().getFirstInputKeyColumns()!= null)
-				System.out.println(this.operatorTree.get(i).getJUCCondition().getFirstInput()+"join("+
+				    System.out.println(this.operatorTree.get(i).getJUCCondition().getFirstInput()+"join("+
 						this.operatorTree.get(i).getJUCCondition().getSecondInput()+").where("
 						+this.operatorTree.get(i).getJUCCondition().getFirstInputKeyColumns()[0]+").equalsTo("+
 						this.operatorTree.get(i).getJUCCondition().getSecondInputKeyColumns()[0]+")");
+                else
+                    System.out.println(this.operatorTree.get(i).getJUCCondition().getFirstInput()+" "+
+                    this.operatorTree.get(i).getJUCCondition().getOperatorType()+" "+
+                    this.operatorTree.get(i).getJUCCondition().getSecondInput());
 			}
 		}
 	}

@@ -133,18 +133,29 @@ public class SingleOperator {
 	
 	
 	public class JUCCondition {
+		private OperatorType operatorType;
 		private int firstInput;
 		private int secondInput;
 		private int[] firstInputKeyColumns;
 		private int[] secondInputKeyColumns;
-	
+
+		public OperatorType getOperatorType() {
+			return operatorType;
+		}
+
+		public void setOperatorType(OperatorType operatorType) {
+			this.operatorType = operatorType;
+		}
 		public int[] getFirstInputKeyColumns() {
+
 			return firstInputKeyColumns;
 		}
 		public void setFirstInputKeyColumns(int[] firstInputKeyColumns) {
+
 			this.firstInputKeyColumns = firstInputKeyColumns;
 		}
 		public int[] getSecondInputKeyColumns() {
+
 			return secondInputKeyColumns;
 		}
 		public void setSecondInputKeyColumns(int[] secondInputKeyColumns) {
@@ -152,16 +163,19 @@ public class SingleOperator {
 		}
 	
 		public int getFirstInput() {
+
 			return firstInput;
 		}
 		public void setFirstInput(int firstInput) {
 			this.firstInput = firstInput;
 		}
 		public int getSecondInput() {
+
 			return secondInput;
 		}
-		public void setSecondInput(int secontInput) {
-			this.secondInput = secontInput;
+		public void setSecondInput(int secondInput) {
+
+			this.secondInput = secondInput;
 		}
 	}
 
