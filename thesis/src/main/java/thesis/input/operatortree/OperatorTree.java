@@ -70,6 +70,7 @@ public class OperatorTree {
 	public List<SingleOperator> createOperatorTree() {
 
         this.dataSetIds = new ArrayList<Integer>();
+
 		for (SourcePlanNode sourceNode : this.optimizedPlan.getDataSources()) {
             List<Integer> copy;
             List<Integer> inputDataSet = new ArrayList<Integer>();
@@ -232,8 +233,10 @@ public class OperatorTree {
 		
 		JUCCondition joinPred = opToAdd.new JUCCondition();
 		
-		joinPred.setFirstInput(InputNum.FIRST.getValue()); //todo : wrong logic
-		joinPred.setSecondInput(InputNum.SECOND.getValue());
+		//joinPred.setFirstInput(InputNum.FIRST.getValue()); //todo : wrong logic
+        joinPred.setFirstInput(opToAdd.getOperatorFirstInputDataSetId());
+		//joinPred.setSecondInput(InputNum.SECOND.getValue());
+        joinPred.setSecondInput(opToAdd.getOperatorSecondInputDataSetId());
 		joinPred.setFirstInputKeyColumns(firstInputKeys);
 		joinPred.setSecondInputKeyColumns(secondInputKeys);
 		
@@ -245,8 +248,10 @@ public class OperatorTree {
 	
 	public SingleOperator addJUCDetails(SingleOperator opToAdd){
 		JUCCondition condition = opToAdd.new JUCCondition();
-		condition.setFirstInput(InputNum.FIRST.getValue());
-		condition.setSecondInput(InputNum.SECOND.getValue());
+		//condition.setFirstInput(InputNum.FIRST.getValue());
+		condition.setFirstInput(opToAdd.getOperatorFirstInputDataSetId());
+		//condition.setSecondInput(InputNum.SECOND.getValue());
+        condition.setSecondInput(opToAdd.getOperatorSecondInputDataSetId());
 		condition.setOperatorType(opToAdd.getOperatorType());
 		opToAdd.setJUCCondition(condition);
 		return opToAdd;
