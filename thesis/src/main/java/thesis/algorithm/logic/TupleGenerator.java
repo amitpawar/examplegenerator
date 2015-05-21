@@ -418,6 +418,7 @@ public class TupleGenerator {
 	public DataSet createConstraintRecords(SingleOperator operator) throws InstantiationException, IllegalAccessException{
 		DataSet dataSetToReturn = new DataSet(this.env, operator.getOperatorOutputType()){};
 		TypeInformation outputType = operator.getOperatorOutputType();
+		System.out.println("Operator :"+operator.getOperatorType()+" DataSetID "+operator.getOperatorInputDataSetId());
         System.out.println(outputType);
         System.out.println(drillToBasicType(outputType));
 

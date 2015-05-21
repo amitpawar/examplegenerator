@@ -1,9 +1,6 @@
 package thesis.input.operatortree;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.List;
+import java.util.*;
 import java.util.regex.Pattern;
 
 import org.apache.flink.api.common.operators.base.CrossOperatorBase;
@@ -11,29 +8,17 @@ import org.apache.flink.api.common.operators.base.FilterOperatorBase;
 import org.apache.flink.api.common.operators.base.FlatMapOperatorBase;
 import org.apache.flink.api.common.operators.base.GroupReduceOperatorBase;
 import org.apache.flink.api.common.operators.base.JoinOperatorBase;
-import org.apache.flink.api.java.DataSet;
 import org.apache.flink.api.java.ExecutionEnvironment;
-import org.apache.flink.api.java.operators.DistinctOperator;
-import org.apache.flink.api.java.operators.FilterOperator;
-import org.apache.flink.api.java.operators.FlatMapOperator;
-import org.apache.flink.api.java.operators.JoinOperator;
-import org.apache.flink.api.java.operators.JoinOperator.JoinOperatorSets.JoinOperatorSetsPredicate;
-import org.apache.flink.api.java.operators.ProjectOperator;
-import org.apache.flink.api.java.operators.UnionOperator;
 import org.apache.flink.api.java.operators.translation.JavaPlan;
-import org.apache.flink.api.java.operators.translation.PlanFilterOperator;
 import org.apache.flink.api.java.operators.translation.PlanProjectOperator;
 import org.apache.flink.optimizer.DataStatistics;
 import org.apache.flink.optimizer.Optimizer;
 import org.apache.flink.optimizer.costs.DefaultCostEstimator;
 import org.apache.flink.optimizer.dag.DagConnection;
 import org.apache.flink.optimizer.dag.OptimizerNode;
-import org.apache.flink.optimizer.plan.Channel;
 import org.apache.flink.optimizer.plan.OptimizedPlan;
-import org.apache.flink.optimizer.plan.PlanNode;
 import org.apache.flink.optimizer.plan.SourcePlanNode;
 import org.apache.flink.api.common.operators.DualInputOperator;
-import org.apache.flink.api.common.operators.GenericDataSinkBase;
 import org.apache.flink.api.common.operators.GenericDataSourceBase;
 import org.apache.flink.api.common.operators.Operator;
 import org.apache.flink.api.common.operators.SingleInputOperator;
@@ -52,8 +37,9 @@ public class OperatorTree {
 	private List<SingleOperator> operatorTree;
 	private List<String> addedNodes;
 	private List<InputDataSource> dataSets;
-	private int dataSetId = 0;
-	private boolean isDualInputOperator = false;
+    private List<Integer> dataSetIds;
+	private int sourceCount = 0;
+	private boolean isDualInputOperatorUsed = false;
 	
 	private enum InputNum { 
 		FIRST(0),SECOND(1);
@@ -81,12 +67,15 @@ public class OperatorTree {
 	}
 
 	public List<SingleOperator> createOperatorTree() {
-		
+
+        this.dataSetIds = new ArrayList<Integer>();
 		for (SourcePlanNode sourceNode : this.optimizedPlan.getDataSources()) {
-			
-			List<Integer> inputDataSet = new ArrayList<Integer>();
-			inputDataSet.add(this.dataSetId);
-			
+            List<Integer> copy;
+            List<Integer> inputDataSet = new ArrayList<Integer>();
+			inputDataSet.add(this.sourceCount); //todo: add from the dataset list
+			this.dataSetIds.add(this.sourceCount);
+            copy = new ArrayList<Integer>(this.dataSetIds);
+
 			if (!isVisited(sourceNode.getProgramOperator())) {
 				SingleOperator op = new SingleOperator();
 				op.setOperatorType(OperatorType.SOURCE);
@@ -97,8 +86,8 @@ public class OperatorTree {
 				this.operatorTree.add(op);
 				this.addedNodes.add(sourceNode.getNodeName());
 				if (sourceNode.getOptimizerNode().getOutgoingConnections() != null)
-					addOutgoingNodes(sourceNode.getOptimizerNode().getOutgoingConnections(), inputDataSet);
-				this.dataSetId++;
+					addOutgoingNodes(sourceNode.getOptimizerNode().getOutgoingConnections(),inputDataSet, copy);
+				this.sourceCount++;
 			}
 		}
 		displayItems();
@@ -106,24 +95,25 @@ public class OperatorTree {
 		return this.operatorTree;
 	}
 
-	public void addOutgoingNodes(List<DagConnection> outgoingConnections, List<Integer> inputDatasets) {
+	public void addOutgoingNodes(List<DagConnection> outgoingConnections, List<Integer> sourceId, List<Integer> inputDatasets) {
 		
 		for (DagConnection conn : outgoingConnections) {
 			SingleOperator op = new SingleOperator();
 			OptimizerNode node = conn.getTarget().getOptimizerNode();
-			this.isDualInputOperator = (node.getOperator() instanceof DualInputOperator)? true:false;
+			boolean isDualInputOperator = (node.getOperator() instanceof DualInputOperator)? true:false;
 			
-			if(this.isDualInputOperator && this.dataSetId % 2 == 0)
+			if(isDualInputOperator && this.sourceCount%2 == 0) //meaning there exists another load
+																	//todo: think better logic
 				return;
 			else
-				addNode(node, inputDatasets);
+				addNode(node,sourceId, inputDatasets);
 			if (node.getOutgoingConnections() != null)
-				addOutgoingNodes(node.getOutgoingConnections(), inputDatasets);
+				addOutgoingNodes(node.getOutgoingConnections(),sourceId, inputDatasets);
 		}
 	}
 
 	@SuppressWarnings("rawtypes")
-	public void addNode(OptimizerNode node, List<Integer> inputDatasets) {
+	public void addNode(OptimizerNode node, List<Integer> sourceId, List<Integer> inputDatasets) {
 		
 		Operator<?> operator = node.getOperator();
 		SingleOperator opToAdd = new SingleOperator();
@@ -136,7 +126,7 @@ public class OperatorTree {
 				if(!isVisited(operator)){
 					
 					opToAdd.setOperatorType(OperatorType.LOAD);
-					addOperatorDetails(opToAdd, operator, inputDatasets);
+					addOperatorDetails(opToAdd, operator, sourceId);
 				}
 			}
 		}
@@ -144,18 +134,20 @@ public class OperatorTree {
 		if (operator instanceof JoinOperatorBase) {
 			if (!isVisited(operator)) {
 				opToAdd.setOperatorType(OperatorType.JOIN);
+                this.isDualInputOperatorUsed = true;
 				SingleOperator opToAddWithJoinPred = addJoinOperatorDetails((JoinOperatorBase) operator, opToAdd);
 				addOperatorDetails(opToAddWithJoinPred, operator, inputDatasets);
-				this.dataSetId++;
+				this.sourceCount++;
 			}
 		}
 
 		if (operator instanceof CrossOperatorBase) {
 			if (!isVisited(operator)) {
 				opToAdd.setOperatorType(OperatorType.CROSS);
+                this.isDualInputOperatorUsed = true;
 				SingleOperator opWithDetails = addJUCDetails(opToAdd);
 				addOperatorDetails(opWithDetails, operator, inputDatasets);
-				this.dataSetId++;
+				this.sourceCount++;
 			}
 		}
 
@@ -169,9 +161,10 @@ public class OperatorTree {
 		if (operator instanceof Union<?>) {
 			if (!isVisited(operator)) {
 				opToAdd.setOperatorType(OperatorType.UNION);
+                this.isDualInputOperatorUsed = true;
 				SingleOperator opWithDetails = addJUCDetails(opToAdd);
 				addOperatorDetails(opWithDetails, operator, inputDatasets);
-				this.dataSetId++;
+				this.sourceCount++;
 			}
 		}
 		

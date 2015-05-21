@@ -26,7 +26,7 @@ public class Config {
 	}
 
 	public static String outputPath() {
-		return "/home/amit/thesis/output";
+		return "/home/amit/thesis/output1";
 	}
 
 }
