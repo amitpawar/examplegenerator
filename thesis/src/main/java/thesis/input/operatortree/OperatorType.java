@@ -8,5 +8,7 @@ public enum OperatorType {
 	JOIN,
 	PROJECT,
 	UNION,
-	SOURCE
+	SOURCE,
+	GROUPREDUCE,
+	REDUCE
 }

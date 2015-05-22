@@ -3,11 +3,7 @@ package thesis.input.operatortree;
 import java.util.*;
 import java.util.regex.Pattern;
 
-import org.apache.flink.api.common.operators.base.CrossOperatorBase;
-import org.apache.flink.api.common.operators.base.FilterOperatorBase;
-import org.apache.flink.api.common.operators.base.FlatMapOperatorBase;
-import org.apache.flink.api.common.operators.base.GroupReduceOperatorBase;
-import org.apache.flink.api.common.operators.base.JoinOperatorBase;
+import org.apache.flink.api.common.operators.base.*;
 import org.apache.flink.api.java.ExecutionEnvironment;
 import org.apache.flink.api.java.operators.translation.JavaPlan;
 import org.apache.flink.api.java.operators.translation.PlanProjectOperator;
@@ -74,11 +70,10 @@ public class OperatorTree {
         this.dataSetIds = new ArrayList<Integer>();
         int sourceCtr = 0;
 		for (SourcePlanNode sourceNode : this.optimizedPlan.getDataSources()) {
-            List<Integer> copy;
+
             List<Integer> inputDataSet = new ArrayList<Integer>();
 			inputDataSet.add(this.sourceCount); //todo: add from the dataset list
 			this.dataSetIds.add(this.sourceCount);
-            copy = new ArrayList<Integer>(this.dataSetIds);
 
 			if (!isVisited(sourceNode.getProgramOperator())) {
 				SingleOperator op = new SingleOperator();
@@ -92,7 +87,7 @@ public class OperatorTree {
                 this.operatorSingleOperatorMap.put(sourceNode.getProgramOperator(), op);
 				this.addedNodes.add(sourceNode.getNodeName());
 				if (sourceNode.getOptimizerNode().getOutgoingConnections() != null)
-					addOutgoingNodes(sourceNode.getOptimizerNode().getOutgoingConnections(),inputDataSet, copy);
+					addOutgoingNodes(sourceNode.getOptimizerNode().getOutgoingConnections());
 				this.sourceCount++;
 			}
             sourceCtr++;
@@ -102,7 +97,7 @@ public class OperatorTree {
 		return this.operatorTree;
 	}
 
-	public void addOutgoingNodes(List<DagConnection> outgoingConnections, List<Integer> sourceId, List<Integer> inputDatasets) {
+	public void addOutgoingNodes(List<DagConnection> outgoingConnections) {
 		
 		for (DagConnection conn : outgoingConnections) {
 			OptimizerNode node = conn.getTarget().getOptimizerNode();
@@ -116,14 +111,14 @@ public class OperatorTree {
             }														//todo: think better logic
 
 			else
-				addNode( node,sourceId, inputDatasets);
+				addNode(node);
 			if (node.getOutgoingConnections() != null)
-				addOutgoingNodes(node.getOutgoingConnections(),sourceId, inputDatasets);
+				addOutgoingNodes(node.getOutgoingConnections());
 		}
 	}
 
 	@SuppressWarnings("rawtypes")
-	public void addNode(OptimizerNode node, List<Integer> sourceId, List<Integer> inputDatasets) {
+	public void addNode(OptimizerNode node) {
 		
 		Operator<?> operator = node.getOperator();
 		SingleOperator opToAdd = new SingleOperator();
@@ -135,7 +130,7 @@ public class OperatorTree {
 			
 				if(!isVisited(operator)){
 					opToAdd.setOperatorType(OperatorType.LOAD);
-					addOperatorDetails(opToAdd, operator, sourceId);
+					addOperatorDetails(opToAdd, operator);
 				}
 			}
 		}
@@ -144,7 +139,7 @@ public class OperatorTree {
 			if (!isVisited(operator)) {
 				opToAdd.setOperatorType(OperatorType.JOIN);
                 this.isDualInputOperatorUsed = true;
-				addOperatorDetails(opToAdd, operator, inputDatasets);
+				addOperatorDetails(opToAdd, operator);
                 addJoinOperatorDetails((JoinOperatorBase) operator, opToAdd);
 				this.sourceCount++;
 
@@ -155,7 +150,7 @@ public class OperatorTree {
 			if (!isVisited(operator)) {
 				opToAdd.setOperatorType(OperatorType.CROSS);
                 this.isDualInputOperatorUsed = true;
-				addOperatorDetails(opToAdd, operator, inputDatasets);
+				addOperatorDetails(opToAdd, operator);
 				addJUCDetails(opToAdd);
                 this.sourceCount++;
 			}
@@ -164,7 +159,7 @@ public class OperatorTree {
 		if (operator instanceof FilterOperatorBase) {
 			if (!isVisited(operator)) {
 				opToAdd.setOperatorType(OperatorType.FILTER);
-				addOperatorDetails(opToAdd, operator, inputDatasets);
+				addOperatorDetails(opToAdd, operator);
 			}
 		}
 		
@@ -172,7 +167,7 @@ public class OperatorTree {
 			if (!isVisited(operator)) {
 				opToAdd.setOperatorType(OperatorType.UNION);
                 this.isDualInputOperatorUsed = true;
-                addOperatorDetails(opToAdd, operator, inputDatasets);
+                addOperatorDetails(opToAdd, operator);
                 addJUCDetails(opToAdd);
 				this.sourceCount++;
 			}
@@ -183,27 +178,42 @@ public class OperatorTree {
 				opToAdd.setOperatorType(OperatorType.PROJECT);
 				opToAdd.setProjectColumns(getProjectArray(operator.getName()));
                 if(this.isDualInputOperatorUsed)
-                    addOperatorDetails(opToAdd, operator, inputDatasets);
+                    addOperatorDetails(opToAdd, operator);
                 else
-                    addOperatorDetails(opToAdd,operator,sourceId);
+                    addOperatorDetails(opToAdd,operator);
 			}
 		}
 
 		if (operator instanceof GroupReduceOperatorBase) {
-			if (operator.getName().contains("Distinct")) {
-				if (!isVisited(operator)) {
+            if (!isVisited(operator)){
+                if (operator.getName().contains("Distinct")) {
 					opToAdd.setOperatorType(OperatorType.DISTINCT);
-                    if(this.isDualInputOperatorUsed)
-					    addOperatorDetails(opToAdd, operator, inputDatasets);
-                    else
-                        addOperatorDetails(opToAdd,operator,sourceId);
+
 				}
+                else
+                    opToAdd.setOperatorType(OperatorType.GROUPREDUCE);
+
+                if(this.isDualInputOperatorUsed)
+                    addOperatorDetails(opToAdd, operator);
+                else
+                    addOperatorDetails(opToAdd,operator);
 			}
+
 		}
+
+        if(operator instanceof ReduceOperatorBase){
+            if(!isVisited(operator)){
+                opToAdd.setOperatorType(OperatorType.REDUCE);
+                if(this.isDualInputOperatorUsed)
+                    addOperatorDetails(opToAdd, operator);
+                else
+                    addOperatorDetails(opToAdd,operator);
+            }
+        }
 		
 	}
 	
-	public void addOperatorDetails(SingleOperator opToAdd, Operator<?> operator, List<Integer> inputDatasets){
+	public void addOperatorDetails(SingleOperator opToAdd, Operator<?> operator){
 
         List<Integer> inputDataSetIds = new ArrayList<Integer>();
         opToAdd.setOperatorName(operator.getName());
@@ -219,7 +229,7 @@ public class OperatorTree {
         }
         if(operator instanceof DualInputOperator){
             opToAdd.setOutputDataSetId(this.dualOperatorOutputCtr);
-            this.dataSetIdMap.put(this.dualOperatorOutputCtr,inputDatasets);
+            this.dataSetIdMap.put(this.dualOperatorOutputCtr,inputDataSetIds);
             this.dualOperatorOutputCtr++;
         }
 		this.operatorTree.add(opToAdd);
