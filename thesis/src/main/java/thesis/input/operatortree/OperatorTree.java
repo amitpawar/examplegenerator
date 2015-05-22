@@ -103,13 +103,8 @@ public class OperatorTree {
 			OptimizerNode node = conn.getTarget().getOptimizerNode();
 			boolean isDualInputOperator = (node.getOperator() instanceof DualInputOperator)? true:false;
 			
-			/*if(isDualInputOperator && this.sourceCount%2 == 0) //meaning there exists another load
-                return;*/
-			if(!this.isDualInputOperatorUsed && isDualInputOperator){
-                this.isDualInputOperatorUsed = true;
+			if(isDualInputOperator && !checkOperatorTreeHasBothParentsForDualOperator((DualInputOperator) node.getOperator()))
                 return;
-            }														//todo: think better logic
-
 			else
 				addNode(node);
 			if (node.getOutgoingConnections() != null)
@@ -313,7 +308,13 @@ public class OperatorTree {
         }
         return parents;
     }
-	
+
+    public boolean checkOperatorTreeHasBothParentsForDualOperator(DualInputOperator operator){
+        boolean hasFirstInput = this.operatorSingleOperatorMap.get(operator.getFirstInput()) != null;
+        boolean hasSecondInput = this.operatorSingleOperatorMap.get(operator.getSecondInput()) != null;
+        return (hasFirstInput && hasSecondInput);
+    }
+
 	public void displayItems(){
 		
 		for (int i = 0; i < this.operatorTree.size(); i++) {
