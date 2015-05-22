@@ -98,7 +98,21 @@ public class SampleTest {
 		
 		DataSet<Tuple2<Tuple2<String, String>, Tuple2<String, Long>>> joinSet = visitSet
 				.join(urlSet).where(1).equalTo(0);
-		
+
+		////
+      /*  DataSource<String> forUnion = env.readTextFile("/home/amit/thesis/dataflow/union");
+        DataSet<Tuple2<Tuple2<String, String>, Tuple2<String, Long>>> unionSet = forUnion.flatMap(new UnionReader());
+        dataSets.add(unionSet);
+        InputDataSource input3 = new InputDataSource();
+        input3.setDataSet(unionSet);
+        input3.setName("Third Source");
+        input3.setId(2);
+
+        dataSources.add(input3);
+
+        DataSet joinPlusUnionSet = joinSet.union(unionSet);*/
+
+        ////
 		//DataSet<Tuple2<Tuple2<Tuple2<String, String>, Tuple2<String, Long>>, Tuple2<Tuple2<String, String>, Tuple2<String, Long>>>> crossSet = joinSet.cross(joinSet);
 
 		DataSet<Tuple2<Tuple2<String, String>, Tuple2<String, Long>>> filterSet = joinSet
@@ -215,6 +229,25 @@ public class SampleTest {
 		}
 
 	}
+
+    public static class UnionReader implements
+            FlatMapFunction<String, Tuple2<Tuple2<String, String>, Tuple2<String, Long>>> {
+
+        private final Pattern SEPARATOR = Pattern.compile("[ \t,]");
+
+        public void flatMap(String readLineFromFile, Collector<Tuple2<Tuple2<String, String>, Tuple2<String, Long>>> out) throws Exception {
+            if (!readLineFromFile.startsWith("%")) {
+                String[] tokens = SEPARATOR.split(readLineFromFile);
+
+                String user = tokens[0];
+                String url = tokens[1];
+                Long pageRank = Long.parseLong(tokens[3]);
+                Tuple2<String,String> one = new Tuple2<String, String>(user,url);
+                Tuple2<String,Long> two =  new Tuple2<String, Long>(url,pageRank);
+                out.collect(new Tuple2<Tuple2<String, String>, Tuple2<String, Long>> (one,two));
+            }
+        }
+    }
 
 	public static class ResultGrouper implements
 			ReduceFunction<Tuple3<String, String, Long>> {
