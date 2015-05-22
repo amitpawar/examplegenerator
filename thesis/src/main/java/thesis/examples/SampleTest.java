@@ -77,7 +77,7 @@ public class SampleTest {
 		dataSets.add(visitSet);
 		InputDataSource input1 = new InputDataSource();
 		input1.setDataSet(visitSet);
-		input1.setName("Visits");
+		input1.setName("First Source");
 		input1.setId(0);
 		
 		//DataSet<Visits> visitSet = visits.flatMap(new VisitsPOJAReader());
@@ -87,7 +87,7 @@ public class SampleTest {
 		dataSets.add(urlSet);
 		InputDataSource input2 = new InputDataSource();
 		input2.setDataSet(urlSet);
-		input2.setName("Urls");
+		input2.setName("Second Source");
 		input2.setId(1);
 		
 		dataSources.add(input1);

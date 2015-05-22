@@ -18,13 +18,21 @@ public class SingleOperator {
     private List<TypeInformation<?>> operatorInputType;
     private JUCCondition jucCondition;
     private Operator<?> operator;
-    private int operatorFirstInputDataSetId;
-    private int operatorSecondInputDataSetId;
     private List<Integer> operatorInputDataSetId;
     private List<DataSet<?>> operatorDataSets;
     private DataSet<?> exampleTuples;
     private int[] projectColumns;
     private List<EquivalenceClass> equivalenceClasses;
+
+    public int getOutputDataSetId() {
+        return outputDataSetId;
+    }
+
+    public void setOutputDataSetId(int outputDataSetId) {
+        this.outputDataSetId = outputDataSetId;
+    }
+
+    private int outputDataSetId;
 
 
     public List<Integer> getOperatorInputDataSetId() {
@@ -33,22 +41,6 @@ public class SingleOperator {
 
     public void setOperatorInputDataSetId(List<Integer> operatorInputDataSetId) {
         this.operatorInputDataSetId = operatorInputDataSetId;
-    }
-
-    public int getOperatorSecondInputDataSetId() {
-        return operatorSecondInputDataSetId;
-    }
-
-    public void setOperatorSecondInputDataSetId(int operatorSecondInputDataSetId) {
-        this.operatorSecondInputDataSetId = operatorSecondInputDataSetId;
-    }
-
-    public int getOperatorFirstInputDataSetId() {
-        return operatorFirstInputDataSetId;
-    }
-
-    public void setOperatorFirstInputDataSetId(int operatorFirstInputDataSetId) {
-        this.operatorFirstInputDataSetId = operatorFirstInputDataSetId;
     }
 
     public List<SingleOperator> getParentOperators() {
