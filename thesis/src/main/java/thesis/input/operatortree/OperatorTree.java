@@ -92,7 +92,7 @@ public class OperatorTree {
 			}
             sourceCtr++;
 		}
-		displayItems();
+		//displayItems();
 		
 		return this.operatorTree;
 	}

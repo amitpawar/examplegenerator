@@ -20,6 +20,7 @@ import java.util.regex.Pattern;
 
 import org.apache.flink.api.common.ExecutionConfig;
 import org.apache.flink.api.common.functions.FilterFunction;
+import org.apache.flink.api.common.functions.FlatMapFunction;
 import org.apache.flink.api.common.functions.RichFilterFunction;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.api.common.typeutils.CompositeType;
@@ -40,6 +41,7 @@ import org.apache.flink.core.fs.FileSystem.WriteMode;
 import org.apache.flink.core.memory.DataInputView;
 import org.apache.flink.core.memory.DataOutputView;
 
+import org.apache.flink.util.Collector;
 import scala.Array;
 import thesis.algorithm.semantics.EquivalenceClass;
 import thesis.algorithm.semantics.JoinEquivalenceClasses;
@@ -161,7 +163,7 @@ public class TupleGenerator {
 			for(EquivalenceClass eqClass : operator.getEquivalenceClasses()){
 				if(eqClass.hasExample()){
 					DataSet constraintRecord = createConstraintRecords(operator);
-					//System.out.println(constraintRecord);
+					System.out.println("Constraint Record :"+constraintRecord.writeAsCsv(Config.outputPath()+"/TEST/upstream/ConstraintRecords"+ctr,WriteMode.OVERWRITE));
 				}
 			}
 				
@@ -350,7 +352,7 @@ public class TupleGenerator {
 		System.out.println("Operator :"+operator.getOperatorType()+" DataSetID "+operator.getOperatorInputDataSetId());
         System.out.println(outputType);
         System.out.println(drillToBasicType(outputType));
-
+        dataSetToReturn = this.env.fromElements(drillToBasicType(outputType));
 		return dataSetToReturn;
 	}
 	
@@ -368,12 +370,14 @@ public class TupleGenerator {
 
             testTuple.setField(name,ctr);
         }
+
         //System.out.println("Amit "+testTuple);
         return testTuple;
 
 
     }
-	
+
+
 	
 	
 	
