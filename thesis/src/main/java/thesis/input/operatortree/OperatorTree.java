@@ -72,7 +72,7 @@ public class OperatorTree {
 		for (SourcePlanNode sourceNode : this.optimizedPlan.getDataSources()) {
 
             List<Integer> inputDataSet = new ArrayList<Integer>();
-			inputDataSet.add(this.sourceCount); //todo: add from the dataset list
+			inputDataSet.add(this.sourceCount);
 			this.dataSetIds.add(this.sourceCount);
 
 			if (!isVisited(sourceNode.getProgramOperator())) {
@@ -257,7 +257,7 @@ public class OperatorTree {
 		
 		JUCCondition joinPred = opToAdd.new JUCCondition();
 		
-		//joinPred.setFirstInput(InputNum.FIRST.getValue()); //todo : wrong logic
+		//joinPred.setFirstInput(InputNum.FIRST.getValue());
         joinPred.setFirstInput(opToAdd.getParentOperators().get(0).getOutputDataSetId());
 		//joinPred.setSecondInput(InputNum.SECOND.getValue());
         joinPred.setSecondInput(opToAdd.getParentOperators().get(1).getOutputDataSetId());

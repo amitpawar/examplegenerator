@@ -23,6 +23,8 @@ public class SingleOperator {
     private DataSet<?> exampleTuples;
     private int[] projectColumns;
     private List<EquivalenceClass> equivalenceClasses;
+    private List<SingleOperator> parentOperators;
+    private int outputDataSetId;
 
     public int getOutputDataSetId() {
         return outputDataSetId;
@@ -31,9 +33,6 @@ public class SingleOperator {
     public void setOutputDataSetId(int outputDataSetId) {
         this.outputDataSetId = outputDataSetId;
     }
-
-    private int outputDataSetId;
-
 
     public List<Integer> getOperatorInputDataSetId() {
         return operatorInputDataSetId;
@@ -51,7 +50,6 @@ public class SingleOperator {
         this.parentOperators = parentOperators;
     }
 
-    private List<SingleOperator> parentOperators;
 
     public List<EquivalenceClass> getEquivalenceClasses() {
         return equivalenceClasses;
