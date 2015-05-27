@@ -41,9 +41,11 @@ public class TupleGenerator {
 	private List<InputDataSource> dataSources;
 	private List<SingleOperator> operatorTree;
 	private Set lineageGroup = new HashSet();
-	private Map <String,SingleOperator> opTypeToOperator = new HashMap<String, SingleOperator>();
+	private Map <String,SingleOperator> opTypeShortNameToOperator = new HashMap<String, SingleOperator>();
 	private ExecutionEnvironment env;
 	private List<DataSet> lineageAdds = new ArrayList<DataSet>();
+    private Map<String,DataSet> unUsedExamplesToSourceMap = new HashMap<String, DataSet>();
+    private final String downstreamOutputPath =  "/home/amit/thesis/output3/TEST/downStream";
 	
 
 	public List<DataSet> getLineageAdds() {
@@ -61,9 +63,10 @@ public class TupleGenerator {
 		this.env = env;
 		//generateTuples(this.dataSources, this.operatorTree);
 		downStreamPass(this.dataSources, this.operatorTree);
-		getRecordLineage(readDownstreamExamplesIntoCollection("/home/amit/thesis/output/TEST/downStream"));
+        env.execute();
+		getRecordLineage(readExampleTuplesIntoCollection(downstreamOutputPath));
 		upStreamPass(this.operatorTree);
-		System.out.println(this.lineageGroup);
+		//System.out.println(this.lineageGroup);
 	}
 
 	public void downStreamPass(List<InputDataSource> dataSources,List<SingleOperator> operatorTree) throws Exception{
@@ -84,6 +87,7 @@ public class TupleGenerator {
                 int id = operator.getOperatorInputDataSetId().get(0);
                 operator.setOutputExampleTuples(sources[id]);
                 sources[id].writeAsCsv(Config.outputPath() + "/TEST/downStream/SOURCE" +id, WriteMode.OVERWRITE);
+                this.opTypeShortNameToOperator.put("SOURCE"+id,operator);
             }
 
 			if(operator.getOperatorType() == OperatorType.LOAD){
@@ -91,8 +95,9 @@ public class TupleGenerator {
 				loadSet[id] = sources[id].first(2);
 				operator.setOutputExampleTuples(loadSet[id]);
 				loadSet[id].writeAsCsv(Config.outputPath() + "/TEST/downStream/LOAD" + ctr, WriteMode.OVERWRITE);
-				this.opTypeToOperator.put("LOAD"+ctr, operator);
+				this.opTypeShortNameToOperator.put("LOAD" + ctr, operator);
 				this.lineageAdds.add(index++, loadSet[id]);
+                getUnusedExamplesForOperator(operator,"LOAD"+id);
 			}
 			
 			if(operator.getOperatorType() == OperatorType.JOIN){
@@ -104,9 +109,10 @@ public class TupleGenerator {
 						.equalTo(condition.getSecondInputKeyColumns());
 				operator.setOutputExampleTuples(joinResult);
 				joinResult.writeAsCsv(Config.outputPath()+"/TEST/downStream/JOIN"+ctr,WriteMode.OVERWRITE);
-				this.opTypeToOperator.put("JOIN"+ctr, operator);
+				this.opTypeShortNameToOperator.put("JOIN" + ctr, operator);
 				dataStream = joinResult;
 				this.lineageAdds.add(index++, joinResult);
+               // getUnusedExamplesForOperator(operator,"JOIN"+ctr);
 			}
 			
 			if(operator.getOperatorType() == OperatorType.PROJECT){
@@ -114,9 +120,10 @@ public class TupleGenerator {
 				DataSet projResult = dataStream.project(operator.getProjectColumns());
 				operator.setOutputExampleTuples(projResult);
 				projResult.writeAsCsv(Config.outputPath()+"/TEST/downStream/PROJECT"+ctr,WriteMode.OVERWRITE);
-				this.opTypeToOperator.put("PROJECT"+ctr, operator);
+				this.opTypeShortNameToOperator.put("PROJECT" + ctr, operator);
 				dataStream = projResult;
 				this.lineageAdds.add(index++, projResult);
+               // getUnusedExamplesForOperator(operator,"PROJECT"+ctr);
 			}
 			
 			if(operator.getOperatorType() == OperatorType.CROSS){
@@ -126,9 +133,10 @@ public class TupleGenerator {
 						loadSet[condition.getFirstInput()].cross(loadSet[condition.getSecondInput()]);
 				operator.setOutputExampleTuples(crossResult);
 				crossResult.writeAsCsv(Config.outputPath()+"/TEST/downStream/CROSS"+ctr,WriteMode.OVERWRITE);
-				this.opTypeToOperator.put("CROSS"+ctr, operator);
+				this.opTypeShortNameToOperator.put("CROSS" + ctr, operator);
 				dataStream = crossResult;
 				this.lineageAdds.add(index++, crossResult);
+              //  getUnusedExamplesForOperator(operator,"CROSS"+ctr);
 			}
 			
 			if(operator.getOperatorType() == OperatorType.UNION){
@@ -138,10 +146,13 @@ public class TupleGenerator {
 				DataSet<?> unionResult = firstInput.union (secondInput);
 				operator.setOutputExampleTuples(unionResult);
 				unionResult.writeAsCsv(Config.outputPath()+"/TEST/downStream/UNION"+ctr,WriteMode.OVERWRITE);
-				this.opTypeToOperator.put("UNION"+ctr, operator);
+				this.opTypeShortNameToOperator.put("UNION" + ctr, operator);
 				dataStream = unionResult;
 				this.lineageAdds.add(index++, unionResult);
+               // getUnusedExamplesForOperator(operator,"UNION"+ctr);
 			}
+
+
 		}
 	}
 	
@@ -184,10 +195,10 @@ public class TupleGenerator {
 		return collection;
 	}
 	
-	public Map readDownstreamExamplesIntoCollection(String outputPath)
+	public Map readExampleTuplesIntoCollection(String outputPath)
 			throws IOException {
 
-		Map<String, Collection> lineageMap = new HashMap<String, Collection>();
+		Map<String, Collection> lineageMap = new HashMap<String, Collection>(); //<filename, exampletuples>
 		File outputDirectory = new File(outputPath);
 		String line;
 
@@ -234,7 +245,7 @@ public class TupleGenerator {
 				else
 					loadEqClasses.getLoadExample().setHasExample(false);
 				
-				SingleOperator load = this.opTypeToOperator.get(opName);
+				SingleOperator load = this.opTypeShortNameToOperator.get(opName);
 				List<EquivalenceClass> eqClass = new ArrayList<EquivalenceClass>();
 				eqClass.add(loadEqClasses.getLoadExample());
 				load.setEquivalenceClasses(eqClass);
@@ -250,7 +261,7 @@ public class TupleGenerator {
 				else
 					joinEqClasses.getJoinedExample().setHasExample(false);
 				
-				SingleOperator join = this.opTypeToOperator.get(opName);
+				SingleOperator join = this.opTypeShortNameToOperator.get(opName);
 				List<EquivalenceClass> eqClass = new ArrayList<EquivalenceClass>();
 				eqClass.add(joinEqClasses.getJoinedExample());
 				join.setEquivalenceClasses(eqClass);
@@ -290,7 +301,7 @@ public class TupleGenerator {
 						String lineageLast = (String) exIt.next();
 						lineage.add(lineageLast);
 						lineages.add(lineage);
-						System.out.println(constructRecordLineage(lineageMap, opOrder, id, lineage, lineageLast));
+						//System.out.println(constructRecordLineage(lineageMap, opOrder, id, lineage, lineageLast));
 					}
 							
 				}
@@ -336,7 +347,7 @@ public class TupleGenerator {
 		return eqClassMap;
 	}
 	
-	public DataSet getConstraintRecords(SingleOperator operator) throws InstantiationException, IllegalAccessException{
+	public DataSet getConstraintRecords(SingleOperator operator) throws InstantiationException, IllegalAccessException, IOException {
 		DataSet dataSetToReturn;
 		TypeInformation outputType = operator.getOperatorOutputType();
 		System.out.println("Operator :"+operator.getOperatorType()+" DataSetID "+operator.getOperatorInputDataSetId());
@@ -349,44 +360,80 @@ public class TupleGenerator {
 
 	}
 
-    public DataSet constructConstraintRecords(SingleOperator operator){
+    public DataSet constructConstraintRecords(SingleOperator operator) throws IOException {
 
         DataSet dataSetToReturn = null;
-        DataSet alreadyPresentExamples = null;
+      /*  DataSet alreadyPresentExamples = null;                              //TODO: logic similar to this
         DataSet constraintRecords = null;
-        dataSetToReturn = alreadyPresentExamples.union(constraintRecords);
+        dataSetToReturn = alreadyPresentExamples.union(constraintRecords);*/
+        List<Integer>inputDataSetIds =  operator.getOperatorInputDataSetId();
+
+        if(operator.getOperatorType() == OperatorType.JOIN){
+            SingleOperator parent1 = operator.getParentOperators().get(0);
+            SingleOperator parent2 = operator.getParentOperators().get(1);
+
+            DataSet parent1Examples = parent1.getOutputExampleTuples();
+            DataSet parent2Examples = parent2.getOutputExampleTuples();
+           // getUnusedExamplesForOperator(operator);
+            Map unUsedSourceTuples = readExampleTuplesIntoCollection("/home/amit/thesis/output3/TEST/UNUSED");
+			//Iterator keyIteraor = unUsedSourceTuples.keySet().iterator();
+            Iterator keyIterator = this.unUsedExamplesToSourceMap.keySet().iterator();
+            List<DataSet> sources = new ArrayList<DataSet>();
+            for(int inputID : inputDataSetIds){
+                String key = "LOAD"+inputID;
+                if(this.unUsedExamplesToSourceMap.keySet().contains(key)){
+                    sources.add(this.unUsedExamplesToSourceMap.get(key));
+                }
+            }
+
+
+
+
+
+            System.out.println(unUsedSourceTuples);
+
+        }
 
         return dataSetToReturn;
     }
 
     //get unused examples from the sources of the given operator
-    public Map getUnusedExamplesForOperator(SingleOperator operator){
+    //todo : make it only for LOAD operator
+    public Map getUnusedExamplesForOperator(SingleOperator operator, String opTypeShortName) {
         int j = 0;
         int sourceId = -1;
-        Map<Integer,DataSet> unUsedExamplesToSourceMap = new HashMap<Integer, DataSet>();
 
-        for(SingleOperator parent : operator.getParentOperators()) {
-            if(parent.getOperatorType() != OperatorType.SOURCE) {
-                while (parent.getOperatorType() != OperatorType.LOAD) {
-                    parent = parent.getParentOperators().get(0);
+        if (operator.getOperatorType() != OperatorType.SOURCE) {
+            for (SingleOperator parent : operator.getParentOperators()) {
+                DataSet usedLoadExamples;
+                if (operator.getOperatorType() != OperatorType.LOAD) {
+                    while (parent.getOperatorType() != OperatorType.LOAD) {
+                        parent = parent.getParentOperators().get(0);
+                    }
+                usedLoadExamples = parent.getOutputExampleTuples();
                 }
-                DataSet usedLoadExamples = parent.getOutputExampleTuples();
-                while(parent.getOperatorType() != OperatorType.SOURCE){
+                else
+                usedLoadExamples = operator.getOutputExampleTuples();
+
+                while (parent.getOperatorType() != OperatorType.SOURCE) {
                     parent = parent.getParentOperators().get(0);
                     sourceId = parent.getOperatorInputDataSetId().get(0);
                 }
                 DataSet mainSourceExamples = parent.getOutputExampleTuples();
-                DataSet unUsedExamples = mainSourceExamples.filter(new TupleFilter()).withBroadcastSet(usedLoadExamples,"filterset");
-                unUsedExamplesToSourceMap.put(sourceId,unUsedExamples);
-                unUsedExamples.writeAsCsv(Config.outputPath() + "/TEST/upstream/loadExamples"+j++, WriteMode.OVERWRITE);
+                DataSet unUsedExamples = mainSourceExamples.filter(new TupleFilter()).withBroadcastSet(usedLoadExamples, "filterset");
+                this.unUsedExamplesToSourceMap.put(opTypeShortName, unUsedExamples);
+                if(operator.getParentOperators().size() > 1)
+                    unUsedExamples.writeAsCsv(Config.outputPath() + "/TEST/UNUSED/" + opTypeShortName +j++, WriteMode.OVERWRITE);
+                else
+                    unUsedExamples.writeAsCsv(Config.outputPath() + "/TEST/UNUSED/" + opTypeShortName +"/", WriteMode.OVERWRITE);
+
             }
         }
-
-        return unUsedExamplesToSourceMap;
+        return this.unUsedExamplesToSourceMap;
     }
-	
-	
-	public Tuple drillToBasicType(TypeInformation typeInformation, SingleOperator operator) throws IllegalAccessException, InstantiationException {
+
+
+    public Tuple drillToBasicType(TypeInformation typeInformation, SingleOperator operator) throws IllegalAccessException, InstantiationException {
         Tuple  testTuple = (Tuple) typeInformation.getTypeClass().newInstance();
         for(int ctr = 0;ctr < typeInformation.getArity();ctr++)
         if(((CompositeType)typeInformation).getTypeAt(ctr).isTupleType())

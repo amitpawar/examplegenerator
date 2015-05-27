@@ -122,19 +122,20 @@ public class SampleTest {
 		// .flatMap(new PrintResult());
 
 		//crossSet.print();
-		printSet.print();
-		
+		printSet.print();  //datasink needed
+
+		//printSet.writeAsCsv(Config.outputPath()+"/" + SampleTest.class.getName(), WriteMode.OVERWRITE);
 		OperatorTree tree = new OperatorTree(env, dataSources );
 		//tree.createOperatorTree();
 		TupleGenerator tg = new TupleGenerator(dataSources, tree.createOperatorTree(), env);
 		//tg.generateTuplesTest(env, dataSets, tree.createOperatorTree());
-		//printSet.writeAsCsv(Config.outputPath()+"/" + SampleTest.class.getName(), WriteMode.OVERWRITE);
-		env.execute();
-		/*Set check =  (Set) tg.readDownstreamExamplesIntoCollection("/home/amit/thesis/output/TEST/downStream").get("LOAD4");
+		//printSet.writeAsCsv(Config.outputPath()+"/" + SampleTest.class.getName(), WriteMode.OVERWRITE); //to print result of main program
+		//env.execute();
+		/*Set check =  (Set) tg.readExampleTuplesIntoCollection("/home/amit/thesis/output/TEST/downStream").get("LOAD4");
 		Iterator it = check.iterator();
 		while(it.hasNext())
 			System.out.println(it.next());*/
-		//tg.getRecordLineage(tg.readDownstreamExamplesIntoCollection("/home/amit/thesis/output/TEST/downStream"));
+		//tg.getRecordLineage(tg.readExampleTuplesIntoCollection("/home/amit/thesis/output/TEST/downStream"));
 	}
 
 	public static class PrintResult
