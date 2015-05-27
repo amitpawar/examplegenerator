@@ -369,6 +369,7 @@ public class TupleGenerator {
         List<Integer>inputDataSetIds =  operator.getOperatorInputDataSetId();
 
         if(operator.getOperatorType() == OperatorType.JOIN){
+            List sources = new ArrayList();
             SingleOperator parent1 = operator.getParentOperators().get(0);
             SingleOperator parent2 = operator.getParentOperators().get(1);
 
@@ -376,13 +377,12 @@ public class TupleGenerator {
             DataSet parent2Examples = parent2.getOutputExampleTuples();
            // getUnusedExamplesForOperator(operator);
             Map unUsedSourceTuples = readExampleTuplesIntoCollection("/home/amit/thesis/output3/TEST/UNUSED");
-			//Iterator keyIteraor = unUsedSourceTuples.keySet().iterator();
-            Iterator keyIterator = this.unUsedExamplesToSourceMap.keySet().iterator();
-            List<DataSet> sources = new ArrayList<DataSet>();
+			Iterator keyIteraor = unUsedSourceTuples.keySet().iterator();
+            //Iterator keyIterator = this.unUsedExamplesToSourceMap.keySet().iterator();
             for(int inputID : inputDataSetIds){
                 String key = "LOAD"+inputID;
-                if(this.unUsedExamplesToSourceMap.keySet().contains(key)){
-                    sources.add(this.unUsedExamplesToSourceMap.get(key));
+                if(unUsedSourceTuples.keySet().contains(key)){
+                    sources.add(unUsedSourceTuples.get(key));
                 }
             }
 
