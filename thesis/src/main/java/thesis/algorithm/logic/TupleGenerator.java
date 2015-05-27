@@ -82,14 +82,14 @@ public class TupleGenerator {
 			SingleOperator operator = operatorTree.get(ctr);
             if(operator.getOperatorType() == OperatorType.SOURCE){
                 int id = operator.getOperatorInputDataSetId().get(0);
-                operator.setExampleTuples(sources[id]);
+                operator.setOutputExampleTuples(sources[id]);
                 sources[id].writeAsCsv(Config.outputPath() + "/TEST/downStream/SOURCE" +id, WriteMode.OVERWRITE);
             }
 
 			if(operator.getOperatorType() == OperatorType.LOAD){
 				int id = operator.getOperatorInputDataSetId().get(0); //todo introduce loop for multiple input set
 				loadSet[id] = sources[id].first(2);
-				operator.setExampleTuples(loadSet[id]);
+				operator.setOutputExampleTuples(loadSet[id]);
 				loadSet[id].writeAsCsv(Config.outputPath() + "/TEST/downStream/LOAD" + ctr, WriteMode.OVERWRITE);
 				this.opTypeToOperator.put("LOAD"+ctr, operator);
 				this.lineageAdds.add(index++, loadSet[id]);
@@ -102,7 +102,7 @@ public class TupleGenerator {
 						loadSet[condition.getFirstInput()].join(loadSet[condition.getSecondInput()])
 						.where(condition.getFirstInputKeyColumns())
 						.equalTo(condition.getSecondInputKeyColumns());
-				operator.setExampleTuples(joinResult);
+				operator.setOutputExampleTuples(joinResult);
 				joinResult.writeAsCsv(Config.outputPath()+"/TEST/downStream/JOIN"+ctr,WriteMode.OVERWRITE);
 				this.opTypeToOperator.put("JOIN"+ctr, operator);
 				dataStream = joinResult;
@@ -112,7 +112,7 @@ public class TupleGenerator {
 			if(operator.getOperatorType() == OperatorType.PROJECT){
 			
 				DataSet projResult = dataStream.project(operator.getProjectColumns());
-				operator.setExampleTuples(projResult);
+				operator.setOutputExampleTuples(projResult);
 				projResult.writeAsCsv(Config.outputPath()+"/TEST/downStream/PROJECT"+ctr,WriteMode.OVERWRITE);
 				this.opTypeToOperator.put("PROJECT"+ctr, operator);
 				dataStream = projResult;
@@ -124,7 +124,7 @@ public class TupleGenerator {
 				JUCCondition condition = operator.getJUCCondition();
 				DataSet<?> crossResult = 
 						loadSet[condition.getFirstInput()].cross(loadSet[condition.getSecondInput()]);
-				operator.setExampleTuples(crossResult);
+				operator.setOutputExampleTuples(crossResult);
 				crossResult.writeAsCsv(Config.outputPath()+"/TEST/downStream/CROSS"+ctr,WriteMode.OVERWRITE);
 				this.opTypeToOperator.put("CROSS"+ctr, operator);
 				dataStream = crossResult;
@@ -136,7 +136,7 @@ public class TupleGenerator {
 				DataSet firstInput = loadSet[condition.getFirstInput()];
 				DataSet secondInput = loadSet[condition.getSecondInput()];
 				DataSet<?> unionResult = firstInput.union (secondInput);
-				operator.setExampleTuples(unionResult);
+				operator.setOutputExampleTuples(unionResult);
 				unionResult.writeAsCsv(Config.outputPath()+"/TEST/downStream/UNION"+ctr,WriteMode.OVERWRITE);
 				this.opTypeToOperator.put("UNION"+ctr, operator);
 				dataStream = unionResult;
@@ -352,25 +352,37 @@ public class TupleGenerator {
     public DataSet constructConstraintRecords(SingleOperator operator){
 
         DataSet dataSetToReturn = null;
+        DataSet alreadyPresentExamples = null;
+        DataSet constraintRecords = null;
+        dataSetToReturn = alreadyPresentExamples.union(constraintRecords);
 
+        return dataSetToReturn;
+    }
+
+    //get unused examples from the sources of the given operator
+    public Map getUnusedExamplesForOperator(SingleOperator operator){
         int j = 0;
+        int sourceId = -1;
+        Map<Integer,DataSet> unUsedExamplesToSourceMap = new HashMap<Integer, DataSet>();
+
         for(SingleOperator parent : operator.getParentOperators()) {
             if(parent.getOperatorType() != OperatorType.SOURCE) {
                 while (parent.getOperatorType() != OperatorType.LOAD) {
                     parent = parent.getParentOperators().get(0);
                 }
-                DataSet usedLoadExamples = parent.getExampleTuples();
+                DataSet usedLoadExamples = parent.getOutputExampleTuples();
                 while(parent.getOperatorType() != OperatorType.SOURCE){
                     parent = parent.getParentOperators().get(0);
+                    sourceId = parent.getOperatorInputDataSetId().get(0);
                 }
-                DataSet mainSourceExamples = parent.getExampleTuples();
+                DataSet mainSourceExamples = parent.getOutputExampleTuples();
                 DataSet unUsedExamples = mainSourceExamples.filter(new TupleFilter()).withBroadcastSet(usedLoadExamples,"filterset");
+                unUsedExamplesToSourceMap.put(sourceId,unUsedExamples);
                 unUsedExamples.writeAsCsv(Config.outputPath() + "/TEST/upstream/loadExamples"+j++, WriteMode.OVERWRITE);
             }
         }
 
-
-        return dataSetToReturn;
+        return unUsedExamplesToSourceMap;
     }
 	
 	

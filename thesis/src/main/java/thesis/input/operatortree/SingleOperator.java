@@ -20,7 +20,7 @@ public class SingleOperator {
     private Operator<?> operator;
     private List<Integer> operatorInputDataSetId;
     private List<DataSet<?>> operatorDataSets;
-    private DataSet<?> exampleTuples;
+    private DataSet<?> outputExampleTuples;
     private int[] projectColumns;
     private List<EquivalenceClass> equivalenceClasses;
     private List<SingleOperator> parentOperators;
@@ -67,12 +67,12 @@ public class SingleOperator {
         this.projectColumns = projectColumns;
     }
 
-    public DataSet<?> getExampleTuples() {
-        return exampleTuples;
+    public DataSet<?> getOutputExampleTuples() {
+        return outputExampleTuples;
     }
 
-    public void setExampleTuples(DataSet<?> exampleTuples) {
-        this.exampleTuples = exampleTuples;
+    public void setOutputExampleTuples(DataSet<?> outputExampleTuples) {
+        this.outputExampleTuples = outputExampleTuples;
     }
 
     public List<DataSet<?>> getOperatorDataSets() {
