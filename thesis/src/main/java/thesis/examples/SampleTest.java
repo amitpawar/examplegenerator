@@ -51,7 +51,7 @@ import org.apache.flink.optimizer.plandump.DumpableNode;
 import org.apache.flink.optimizer.plandump.PlanJSONDumpGenerator;
 import org.apache.mahout.classifier.df.data.Data;
 
-import thesis.algorithm.logic.TupleGenerator;
+import org.apache.flink.api.common.operators.TupleGenerator;
 import thesis.input.datasources.InputDataSource;
 import thesis.input.operatortree.OperatorTree;
 
@@ -65,7 +65,7 @@ public class SampleTest {
 		List<DataSet<?>> dataSets = new ArrayList<DataSet<?>>();
 		
 		ExecutionEnvironment env = ExecutionEnvironment
-				.getExecutionEnvironment();
+				.createCollectionsEnvironment();
 
 		DataSource<String> visits = env.readTextFile(Config.pathToVisits());
 		DataSource<String> urls = env.readTextFile(Config.pathToUrls());
@@ -118,7 +118,7 @@ public class SampleTest {
 		DataSet<Tuple2<Tuple2<String, String>, Tuple2<String, Long>>> filterSet = joinSet
 				.filter(new RankFilter());
 
-		DataSet<Tuple3<String, String, Long>> printSet = filterSet.project(1);
+		DataSet<Tuple3<String, String, Long>> printSet = joinSet.project(1);
 		// .flatMap(new PrintResult());
 
 		//crossSet.print();
@@ -130,7 +130,7 @@ public class SampleTest {
 		TupleGenerator tg = new TupleGenerator(dataSources, tree.createOperatorTree(), env);
 		//tg.generateTuplesTest(env, dataSets, tree.createOperatorTree());
 		//printSet.writeAsCsv(Config.outputPath()+"/" + SampleTest.class.getName(), WriteMode.OVERWRITE); //to print result of main program
-		env.execute();
+		//env.execute();
 		/*Set check =  (Set) tg.readExampleTuplesIntoCollection("/home/amit/thesis/output/TEST/downStream").get("LOAD4");
 		Iterator it = check.iterator();
 		while(it.hasNext())

@@ -25,16 +25,16 @@ public class SingleOperator {
     private List<EquivalenceClass> equivalenceClasses;
     private List<SingleOperator> parentOperators;
     private int outputDataSetId;
+    private List operatorOutputAsList;
 
-    public List getOperatorOutput() {
-        return operatorOutput;
+    public List getOperatorOutputAsList() {
+        return operatorOutputAsList;
     }
 
-    public void setOperatorOutput(List operatorOutput) {
-        this.operatorOutput = operatorOutput;
+    public void setOperatorOutputAsList(List operatorOutputAsList) {
+        this.operatorOutputAsList = operatorOutputAsList;
     }
 
-    private List operatorOutput;
 
     public int getOutputDataSetId() {
         return outputDataSetId;
