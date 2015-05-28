@@ -4,16 +4,7 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -48,6 +39,7 @@ public class TupleGenerator {
 	private List<DataSet> lineageAdds = new ArrayList<DataSet>();
     private Map<String,DataSet> unUsedExamplesToSourceMap = new HashMap<String, DataSet>();
     private final String downstreamOutputPath =  "/home/amit/thesis/output3/TEST/downStream";
+
 	
 
 	public List<DataSet> getLineageAdds() {
@@ -159,7 +151,7 @@ public class TupleGenerator {
 
                 DataSet distinctResult = loadSet[operator.getOperatorInputDataSetId().get(0)].distinct();
                 operator.setOutputExampleTuples(distinctResult);
-                distinctResult.writeAsCsv(Config.outputPath()+"/TEST/downStream/DISTINCT"+ctr,WriteMode.OVERWRITE);
+                //distinctResult.writeAsCsv(Config.outputPath()+"/TEST/downStream/DISTINCT"+ctr,WriteMode.OVERWRITE);
                 this.opTypeShortNameToOperator.put("DISTINCT" + ctr, operator);
                 dataStream = distinctResult;
                 this.lineageAdds.add(index++, distinctResult);
@@ -213,7 +205,7 @@ public class TupleGenerator {
 	}
 	
 	public Map readExampleTuplesIntoCollection(String outputPath)
-			throws IOException {
+            throws IOException, InstantiationException, IllegalAccessException {
 
 		Map<String, Collection> lineageMap = new HashMap<String, Collection>(); //<filename, exampletuples>
 		File outputDirectory = new File(outputPath);
@@ -221,29 +213,57 @@ public class TupleGenerator {
 
 		for (File fileEntry : outputDirectory.listFiles()) {
 			if (fileEntry.isDirectory()) {
-				List exampleSet = new ArrayList();
+				List<Tuple> tupleExampleSet = new ArrayList<Tuple>();
+                List stringExampleSet = new ArrayList();
 				for (File insideFile : fileEntry.listFiles()) {
 					BufferedReader br = new BufferedReader(new FileReader(insideFile));
 					while ((line = br.readLine()) != null) {
-						exampleSet.add(line);
+                        TypeInformation type = this.opTypeShortNameToOperator.get(fileEntry.getName()).getOperatorOutputType();
+                        if(type.isTupleType())
+                            tupleExampleSet.add(stringToTuple(line, type));
+                        else
+                            stringExampleSet.add(line);
 					}
-					lineageMap.put(fileEntry.getName(), exampleSet);
+                    if(tupleExampleSet.size() > 1)
+					    lineageMap.put(fileEntry.getName(), tupleExampleSet);
+                    if(stringExampleSet.size() > 1)
+                        lineageMap.put(fileEntry.getName(),stringExampleSet);
 					br.close();
 				}
 
 			}
 			else if (fileEntry.isFile()){
-				List exampleSet = new ArrayList();
+				List<Tuple> tupleExampleSet = new ArrayList<Tuple>();
+                List stringExampleSet = new ArrayList();
 				BufferedReader br = new BufferedReader(new FileReader(fileEntry));
 				while ((line = br.readLine()) != null) {
-					exampleSet.add(line);
+                    TypeInformation type = this.opTypeShortNameToOperator.get(fileEntry.getName()).getOperatorOutputType();
+                    if(type.isTupleType())
+                        tupleExampleSet.add(stringToTuple(line, type));
+                    else
+                        stringExampleSet.add(line);
 				}
-				lineageMap.put(fileEntry.getName(), exampleSet);
-				br.close();
+                if(tupleExampleSet.size() > 1)
+                    lineageMap.put(fileEntry.getName(), tupleExampleSet);
+                if(stringExampleSet.size() > 1)
+                    lineageMap.put(fileEntry.getName(),stringExampleSet);
+                br.close();
 			}
 		}
 		return lineageMap;
 	}
+
+    public Tuple stringToTuple(String line, TypeInformation typeInformation) throws IllegalAccessException, InstantiationException {
+
+        Pattern toSplit = Pattern.compile("[ \t,]");
+        String[] tokens = toSplit.split(line.replaceAll("[\\(\\)]",""));
+
+        Tuple convertedTuple = drillToBasicType(typeInformation, new LinkedList<String>(Arrays.asList(tokens)));
+
+        System.out.println(tokens);
+        return convertedTuple;
+    }
+
 	
 	public void setEquivalenceClasses(Map lineageMap){
 		
@@ -397,8 +417,8 @@ public class TupleGenerator {
             int[] whereClause = joinCondition.getFirstInputKeyColumns();
             int[] equalsToClause = joinCondition.getSecondInputKeyColumns();
 
-            DataSet addTup1 = this.env.fromElements((drillToBasicType(parent1.getOperatorOutputType(), whereClause[0], "AMITTEST")));
-            DataSet addTup2 = this.env.fromElements(drillToBasicType(parent2.getOperatorOutputType(), equalsToClause[0], "AMITTEST"));
+            DataSet addTup1 = null; //this.env.fromElements((drillToBasicType(parent1.getOperatorOutputType(), whereClause[0], "AMITTEST")));
+            DataSet addTup2 = null; //this.env.fromElements(drillToBasicType(parent2.getOperatorOutputType(), equalsToClause[0], "AMITTEST"));
 
             operatorToDataSetMap.put(parent1,addTup1);
             operatorToDataSetMap.put(parent2,addTup2);
@@ -431,6 +451,8 @@ public class TupleGenerator {
                 if (operator.getOperatorType() != OperatorType.LOAD) {
                     while (parent.getOperatorType() != OperatorType.LOAD) {
                         parent = parent.getParentOperators().get(0);
+                        unionedSet = (parent.getOutputExampleTuples().union(constraintRecordList.get(childOperator)));
+                        unionedSet.writeAsCsv(Config.outputPath() + "/TEST/REWRITE/" + parent.getOperatorType() + i++, WriteMode.OVERWRITE);
                     }
                     unionedSet = (parent.getOutputExampleTuples().union(constraintRecordList.get(childOperator)));
                 }
@@ -479,28 +501,28 @@ public class TupleGenerator {
     }
 
     //Todo : check for all types
-    public Tuple drillToBasicType(TypeInformation typeInformation, int pos, Object passedValue) throws IllegalAccessException, InstantiationException {
-        Tuple  testTuple = (Tuple) typeInformation.getTypeClass().newInstance();
-        for(int ctr = 0;ctr < typeInformation.getArity();ctr++)
-        if(((CompositeType)typeInformation).getTypeAt(ctr).isTupleType())
-            testTuple.setField(drillToBasicType(((CompositeType) typeInformation).getTypeAt(ctr),pos,passedValue),ctr);
+    public Tuple drillToBasicType(TypeInformation typeInformation, List tokens) throws IllegalAccessException, InstantiationException {
+        Tuple testTuple = (Tuple) typeInformation.getTypeClass().newInstance();
 
-        else{
-            String name = ((CompositeType) typeInformation).getTypeAt(ctr).toString();//todo add tuple field from source
-            //System.out.println("Recursive -"+((CompositeType) typeInformation).getTypeAt(ctr));
-            if(ctr == pos)
-                testTuple.setField(passedValue,ctr);
+        for (int ctr = 0; ctr < typeInformation.getArity(); ctr++)
+
+            if (((CompositeType) typeInformation).getTypeAt(ctr).isTupleType())
+                testTuple.setField(drillToBasicType(((CompositeType) typeInformation).getTypeAt(ctr), tokens), ctr);
+
             else {
-                if (name.equalsIgnoreCase("String"))
+                String name = ((CompositeType) typeInformation).getTypeAt(ctr).toString();//todo add tuple field from source
+
+                testTuple.setField(tokens.get(0),ctr);
+                tokens.remove(tokens.get(0));
+                /*if (name.equalsIgnoreCase("String"))
                     testTuple.setField(name, ctr);
-                if(name.equalsIgnoreCase("Long")) {
+                if (name.equalsIgnoreCase("Long")) {
                     long someValue = -9999;
                     testTuple.setField(someValue, ctr);
-                }
-            }
-        }
 
-        //System.out.println("Amit "+testTuple);
+                }*/
+            }
+
         return testTuple;
 
 
