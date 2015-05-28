@@ -26,6 +26,16 @@ public class SingleOperator {
     private List<SingleOperator> parentOperators;
     private int outputDataSetId;
 
+    public List getOperatorOutput() {
+        return operatorOutput;
+    }
+
+    public void setOperatorOutput(List operatorOutput) {
+        this.operatorOutput = operatorOutput;
+    }
+
+    private List operatorOutput;
+
     public int getOutputDataSetId() {
         return outputDataSetId;
     }

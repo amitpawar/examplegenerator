@@ -9,6 +9,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import org.apache.flink.api.common.functions.FlatMapFunction;
+import org.apache.flink.api.common.operators.SingleInputOperator;
 import org.apache.flink.api.common.functions.RichFilterFunction;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.api.common.typeutils.CompositeType;
@@ -83,6 +84,7 @@ public class TupleGenerator {
                 operator.setOutputExampleTuples(sources[id]);
                 sources[id].writeAsCsv(Config.outputPath() + "/TEST/downStream/SOURCE" +id, WriteMode.OVERWRITE);
                 this.opTypeShortNameToOperator.put("SOURCE"+id,operator);
+
             }
 
 			if(operator.getOperatorType() == OperatorType.LOAD){
