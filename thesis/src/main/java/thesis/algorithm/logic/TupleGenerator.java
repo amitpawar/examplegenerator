@@ -66,7 +66,8 @@ public class TupleGenerator {
 		//generateTuples(this.dataSources, this.operatorTree);
 		downStreamPass(this.dataSources, this.operatorTree);
         env.execute();
-		getRecordLineage(readExampleTuplesIntoCollection(downstreamOutputPath));
+		//getRecordLineage(readExampleTuplesIntoCollection(downstreamOutputPath));
+        setEquivalenceClasses(readExampleTuplesIntoCollection(downstreamOutputPath));
 		upStreamPass(this.operatorTree);
 		//System.out.println(this.lineageGroup);
 	}
@@ -158,7 +159,7 @@ public class TupleGenerator {
 
                 DataSet distinctResult = loadSet[operator.getOperatorInputDataSetId().get(0)].distinct();
                 operator.setOutputExampleTuples(distinctResult);
-               // distinctResult.writeAsCsv(Config.outputPath()+"/TEST/downStream/DISTINCT"+ctr,WriteMode.OVERWRITE);
+                distinctResult.writeAsCsv(Config.outputPath()+"/TEST/downStream/DISTINCT"+ctr,WriteMode.OVERWRITE);
                 this.opTypeShortNameToOperator.put("DISTINCT" + ctr, operator);
                 dataStream = distinctResult;
                 this.lineageAdds.add(index++, distinctResult);
@@ -412,7 +413,7 @@ public class TupleGenerator {
             setWithConstraintRecord2.writeAsCsv(Config.outputPath()+"/TEST/CONSTRAINTRECORDS2",WriteMode.OVERWRITE);
 
             System.out.println();
-            //propagateConstraintRecordUpstream(operatorToDataSetMap,operator);
+            propagateConstraintRecordUpstream(operatorToDataSetMap,operator);
 
         }
 
@@ -426,16 +427,17 @@ public class TupleGenerator {
         while (keyIt.hasNext()) {
             SingleOperator childOperator = (SingleOperator) keyIt.next();
             for (SingleOperator parent : childOperator.getParentOperators()) {
+                DataSet unionedSet = constraintRecordList.get(childOperator);
                 if (operator.getOperatorType() != OperatorType.LOAD) {
                     while (parent.getOperatorType() != OperatorType.LOAD) {
-                        parent.setOutputExampleTuples(parent.getOutputExampleTuples().union(constraintRecordList.get(childOperator)));
                         parent = parent.getParentOperators().get(0);
                     }
+                    unionedSet = (parent.getOutputExampleTuples().union(constraintRecordList.get(childOperator)));
                 }
-                else
-                    parent.setOutputExampleTuples(parent.getOutputExampleTuples().union(constraintRecordList.get(childOperator)));
+                /*else
+                    unionedSet = (parent.getOutputExampleTuples().union(constraintRecordList.get(childOperator)));*/
 
-                parent.getOutputExampleTuples().writeAsCsv(Config.outputPath()+"/TEST/REWRITE/"+parent.getOperatorType()+i++,WriteMode.OVERWRITE);
+                unionedSet.writeAsCsv(Config.outputPath() + "/TEST/REWRITE/" + parent.getOperatorType() + i++, WriteMode.OVERWRITE);
             }
         }
 
