@@ -5,16 +5,23 @@ public class Config {
 	private Config() {
 	}
 
-	public static String pathToVisits() {
+/*	public static String pathToVisits() {
 		return "/home/amit/thesis/dataflow/visits";
+	}*/
+	public static String pathToVisits() {
+		return "src/resources/visits";
 	}
 
 	public static String pathToVisitsEU() {
 		return "/home/amit/thesis/dataflow/visitseu";
 	}
 
-	public static String pathToUrls() {
+/*	public static String pathToUrls() {
 		return "/home/amit/thesis/dataflow/urls";
+	}*/
+
+	public static String pathToUrls() {
+		return "src/resources/urls";
 	}
 
 	public static String pathToCoordSet1() {
@@ -25,8 +32,11 @@ public class Config {
 		return "/home/amit/thesis/dataflow/coordSet2";
 	}
 
-	public static String outputPath() {
+	/*public static String outputPath() {
 		return "/home/amit/thesis/output3";
-	}
+	}*/
 
+	public static String outputPath() {
+		return "src/resources/output";
+	}
 }
