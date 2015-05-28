@@ -17,6 +17,7 @@ import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import org.apache.flink.api.common.functions.FlatMapFunction;
 import org.apache.flink.api.common.functions.RichFilterFunction;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.api.common.typeutils.CompositeType;
@@ -27,6 +28,7 @@ import org.apache.flink.api.java.tuple.Tuple;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.core.fs.FileSystem.WriteMode;
 
+import org.apache.flink.util.Collector;
 import thesis.algorithm.semantics.EquivalenceClass;
 import thesis.algorithm.semantics.JoinEquivalenceClasses;
 import thesis.algorithm.semantics.LoadEquivalenceClasses;
@@ -152,6 +154,17 @@ public class TupleGenerator {
                // getUnusedExamplesForOperator(operator,"UNION"+ctr);
 			}
 
+            if(operator.getOperatorType() == OperatorType.DISTINCT){
+
+                DataSet distinctResult = loadSet[operator.getOperatorInputDataSetId().get(0)].distinct();
+                operator.setOutputExampleTuples(distinctResult);
+               // distinctResult.writeAsCsv(Config.outputPath()+"/TEST/downStream/DISTINCT"+ctr,WriteMode.OVERWRITE);
+                this.opTypeShortNameToOperator.put("DISTINCT" + ctr, operator);
+                dataStream = distinctResult;
+                this.lineageAdds.add(index++, distinctResult);
+                // getUnusedExamplesForOperator(operator,"PROJECT"+ctr);
+            }
+
 
 		}
 	}
@@ -164,7 +177,10 @@ public class TupleGenerator {
 			for(EquivalenceClass eqClass : operator.getEquivalenceClasses()){
 				if(eqClass.hasExample()){
 					DataSet constraintRecord = getConstraintRecords(operator);
-					System.out.println("Constraint Record :"+constraintRecord.writeAsCsv(Config.outputPath()+"/TEST/upstream/ConstraintRecords"+ctr,WriteMode.OVERWRITE));
+					//System.out.println("Constraint Record :"+constraintRecord.writeAsCsv(Config.outputPath()+"/TEST/upstream/ConstraintRecords"+ctr,WriteMode.OVERWRITE));
+
+                    //printAllDataSets();
+                    //this.env.execute();
 				}
 			}
 				
@@ -352,49 +368,77 @@ public class TupleGenerator {
 		TypeInformation outputType = operator.getOperatorOutputType();
 		System.out.println("Operator :"+operator.getOperatorType()+" DataSetID "+operator.getOperatorInputDataSetId());
         System.out.println(outputType);
-        System.out.println(drillToBasicType(outputType,operator));
-        dataSetToReturn = this.env.fromElements(drillToBasicType(outputType,operator));
+        //System.out.println(drillToBasicType(outputType));
+        //dataSetToReturn = this.env.fromElements(drillToBasicType(outputType));
 
-        constructConstraintRecords(operator);
-        return dataSetToReturn;
+        return constructConstraintRecords(operator);
+        //return dataSetToReturn;
 
 	}
 
-    public DataSet constructConstraintRecords(SingleOperator operator) throws IOException {
+    public DataSet constructConstraintRecords(SingleOperator operator) throws IOException, InstantiationException, IllegalAccessException {
 
         DataSet dataSetToReturn = null;
       /*  DataSet alreadyPresentExamples = null;                              //TODO: logic similar to this
         DataSet constraintRecords = null;
         dataSetToReturn = alreadyPresentExamples.union(constraintRecords);*/
-        List<Integer>inputDataSetIds =  operator.getOperatorInputDataSetId();
+        Map<SingleOperator,DataSet> operatorToDataSetMap = new HashMap<SingleOperator, DataSet>();
 
         if(operator.getOperatorType() == OperatorType.JOIN){
-            List sources = new ArrayList();
+
             SingleOperator parent1 = operator.getParentOperators().get(0);
             SingleOperator parent2 = operator.getParentOperators().get(1);
 
             DataSet parent1Examples = parent1.getOutputExampleTuples();
             DataSet parent2Examples = parent2.getOutputExampleTuples();
-           // getUnusedExamplesForOperator(operator);
-            Map unUsedSourceTuples = readExampleTuplesIntoCollection("/home/amit/thesis/output3/TEST/UNUSED");
-			Iterator keyIteraor = unUsedSourceTuples.keySet().iterator();
-            //Iterator keyIterator = this.unUsedExamplesToSourceMap.keySet().iterator();
-            for(int inputID : inputDataSetIds){
-                String key = "LOAD"+inputID;
-                if(unUsedSourceTuples.keySet().contains(key)){
-                    sources.add(unUsedSourceTuples.get(key));
-                }
-            }
 
+            JUCCondition joinCondition = operator.getJUCCondition();
+            int[] whereClause = joinCondition.getFirstInputKeyColumns();
+            int[] equalsToClause = joinCondition.getSecondInputKeyColumns();
 
+            DataSet addTup1 = this.env.fromElements((drillToBasicType(parent1.getOperatorOutputType(), whereClause[0], "AMITTEST")));
+            DataSet addTup2 = this.env.fromElements(drillToBasicType(parent2.getOperatorOutputType(), equalsToClause[0], "AMITTEST"));
 
+            operatorToDataSetMap.put(parent1,addTup1);
+            operatorToDataSetMap.put(parent2,addTup2);
 
+            DataSet setWithConstraintRecord1 =  parent1Examples.union(addTup1);
+            DataSet setWithConstraintRecord2 = parent2Examples.union(addTup2);
 
-            System.out.println(unUsedSourceTuples);
+            parent1.setOutputExampleTuples(setWithConstraintRecord1);
+            parent2.setOutputExampleTuples(setWithConstraintRecord2);
+
+            setWithConstraintRecord1.writeAsCsv(Config.outputPath()+"/TEST/CONSTRAINTRECORDS1",WriteMode.OVERWRITE);
+            setWithConstraintRecord2.writeAsCsv(Config.outputPath()+"/TEST/CONSTRAINTRECORDS2",WriteMode.OVERWRITE);
+
+            System.out.println();
+            //propagateConstraintRecordUpstream(operatorToDataSetMap,operator);
 
         }
 
         return dataSetToReturn;
+    }
+
+    public void propagateConstraintRecordUpstream(Map<SingleOperator, DataSet> constraintRecordList, SingleOperator operator) {
+
+        int i = 0;
+        Iterator keyIt = constraintRecordList.keySet().iterator();
+        while (keyIt.hasNext()) {
+            SingleOperator childOperator = (SingleOperator) keyIt.next();
+            for (SingleOperator parent : childOperator.getParentOperators()) {
+                if (operator.getOperatorType() != OperatorType.LOAD) {
+                    while (parent.getOperatorType() != OperatorType.LOAD) {
+                        parent.setOutputExampleTuples(parent.getOutputExampleTuples().union(constraintRecordList.get(childOperator)));
+                        parent = parent.getParentOperators().get(0);
+                    }
+                }
+                else
+                    parent.setOutputExampleTuples(parent.getOutputExampleTuples().union(constraintRecordList.get(childOperator)));
+
+                parent.getOutputExampleTuples().writeAsCsv(Config.outputPath()+"/TEST/REWRITE/"+parent.getOperatorType()+i++,WriteMode.OVERWRITE);
+            }
+        }
+
     }
 
     //get unused examples from the sources of the given operator
@@ -432,18 +476,26 @@ public class TupleGenerator {
         return this.unUsedExamplesToSourceMap;
     }
 
-
-    public Tuple drillToBasicType(TypeInformation typeInformation, SingleOperator operator) throws IllegalAccessException, InstantiationException {
+    //Todo : check for all types
+    public Tuple drillToBasicType(TypeInformation typeInformation, int pos, Object passedValue) throws IllegalAccessException, InstantiationException {
         Tuple  testTuple = (Tuple) typeInformation.getTypeClass().newInstance();
         for(int ctr = 0;ctr < typeInformation.getArity();ctr++)
         if(((CompositeType)typeInformation).getTypeAt(ctr).isTupleType())
-            testTuple.setField(drillToBasicType(((CompositeType) typeInformation).getTypeAt(ctr),operator),ctr);
+            testTuple.setField(drillToBasicType(((CompositeType) typeInformation).getTypeAt(ctr),pos,passedValue),ctr);
 
         else{
             String name = ((CompositeType) typeInformation).getTypeAt(ctr).toString();//todo add tuple field from source
-            System.out.println("Recursive -"+((CompositeType) typeInformation).getTypeAt(ctr));
-
-            testTuple.setField(name,ctr);
+            //System.out.println("Recursive -"+((CompositeType) typeInformation).getTypeAt(ctr));
+            if(ctr == pos)
+                testTuple.setField(passedValue,ctr);
+            else {
+                if (name.equalsIgnoreCase("String"))
+                    testTuple.setField(name, ctr);
+                if(name.equalsIgnoreCase("Long")) {
+                    long someValue = -9999;
+                    testTuple.setField(someValue, ctr);
+                }
+            }
         }
 
         //System.out.println("Amit "+testTuple);
@@ -452,7 +504,12 @@ public class TupleGenerator {
 
     }
 
-
+    public void printAllDataSets(){
+        for(int i = 0; i < this.operatorTree.size();i++){
+            if(this.operatorTree.get(i).getOutputExampleTuples() != null)
+                this.operatorTree.get(i).getOutputExampleTuples().writeAsCsv(Config.outputPath()+"/TEST/REWRITE/"+this.operatorTree.get(i).getOperatorType()+""+i,WriteMode.OVERWRITE);
+        }
+    }
 	
 	
 	
@@ -482,4 +539,6 @@ public class TupleGenerator {
 			return !sampleSet.contains(arg0);
 		}
 	}
+
+
 }

@@ -130,7 +130,7 @@ public class SampleTest {
 		TupleGenerator tg = new TupleGenerator(dataSources, tree.createOperatorTree(), env);
 		//tg.generateTuplesTest(env, dataSets, tree.createOperatorTree());
 		//printSet.writeAsCsv(Config.outputPath()+"/" + SampleTest.class.getName(), WriteMode.OVERWRITE); //to print result of main program
-		//env.execute();
+		env.execute();
 		/*Set check =  (Set) tg.readExampleTuplesIntoCollection("/home/amit/thesis/output/TEST/downStream").get("LOAD4");
 		Iterator it = check.iterator();
 		while(it.hasNext())
