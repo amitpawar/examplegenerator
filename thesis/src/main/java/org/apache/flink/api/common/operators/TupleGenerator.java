@@ -1,19 +1,12 @@
 package org.apache.flink.api.common.operators;
 
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.FileReader;
-import java.io.IOException;
 import java.util.*;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 import org.apache.flink.api.common.functions.RichFilterFunction;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.api.common.typeutils.CompositeType;
 import org.apache.flink.api.java.DataSet;
 import org.apache.flink.api.java.ExecutionEnvironment;
-import org.apache.flink.api.java.io.RemoteCollectorImpl;
 import org.apache.flink.api.java.tuple.Tuple;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.core.fs.FileSystem.WriteMode;
@@ -37,6 +30,7 @@ public class TupleGenerator {
 	private List<DataSet> lineageAdds = new ArrayList<DataSet>();
     private Map<String,DataSet> unUsedExamplesToSourceMap = new HashMap<String, DataSet>();
     private final String downstreamOutputPath =  "/home/amit/thesis/output3/TEST/downStream";
+    private Map<SingleOperator,Tuple> operatorToConstraintRecordMap = new HashMap<SingleOperator, Tuple>();
 
 	
 
@@ -94,10 +88,10 @@ public class TupleGenerator {
                 int id = operator.getOperatorInputDataSetId().get(0);
                 operator.setOutputExampleTuples(sources[id]);
                 sources[id].writeAsCsv(Config.outputPath() + "/TEST/downStream/SOURCE" +id, WriteMode.OVERWRITE);
-                this.opTypeShortNameToOperator.put("SOURCE"+id,operator);
+                this.opTypeShortNameToOperator.put("SOURCE "+id,operator);
                 List list = ((GenericDataSourceBase) operator.getOperator()).executeOnCollections(this.env.getConfig());
                 operator.setOperatorOutputAsList(list);
-                System.out.println("SOURCE");
+                System.out.println("SOURCE "+operator.getOperatorName());
                 for(Object object:list)
                     System.out.println(object);
             }
@@ -109,11 +103,17 @@ public class TupleGenerator {
 				loadSet[id].writeAsCsv(Config.outputPath() + "/TEST/downStream/LOAD" + ctr, WriteMode.OVERWRITE);
 				this.opTypeShortNameToOperator.put("LOAD" + ctr, operator);
 				this.lineageAdds.add(index++, loadSet[id]);
-                getUnusedExamplesForOperator(operator,"LOAD"+id);
-                List list = ((SingleInputOperator)operator.getOperator()).executeOnCollections(
-                        operator.getParentOperators().get(0).getOperatorOutputAsList(),null,this.env.getConfig());
+                getUnusedExamplesForOperatorTest(operator, "LOAD" + id);
+
+                List inputList = new ArrayList();
+                Random randomGenerator = new Random();
+                inputList.add(returnRandomTuple(operator.getParentOperators().get(0).getOperatorOutputAsList(),randomGenerator));
+                inputList.add(returnRandomTuple(operator.getParentOperators().get(0).getOperatorOutputAsList(),randomGenerator));
+
+                List list = ((SingleInputOperator)operator.getOperator()).executeOnCollections(inputList,
+                        null,this.env.getConfig());
                 operator.setOperatorOutputAsList(list);
-                System.out.println("LOAD");
+                System.out.println("LOAD " +operator.getOperatorName());
                 for(Object object:list)
                     System.out.println(object);
 			}
@@ -130,7 +130,7 @@ public class TupleGenerator {
 				this.opTypeShortNameToOperator.put("JOIN" + ctr, operator);
 				dataStream = joinResult;
 				this.lineageAdds.add(index++, joinResult);
-               // getUnusedExamplesForOperator(operator,"JOIN"+ctr);
+               // getUnusedExamplesForOperatorTest(operator,"JOIN"+ctr);
                 List list = ((DualInputOperator)operator.getOperator()).executeOnCollections(
                         operator.getParentOperators().get(0).getOperatorOutputAsList(),
                         operator.getParentOperators().get(1).getOperatorOutputAsList(),null,this.env.getConfig());
@@ -148,7 +148,7 @@ public class TupleGenerator {
 				this.opTypeShortNameToOperator.put("PROJECT" + ctr, operator);
 				dataStream = projResult;
 				this.lineageAdds.add(index++, projResult);
-               // getUnusedExamplesForOperator(operator,"PROJECT"+ctr);
+               // getUnusedExamplesForOperatorTest(operator,"PROJECT"+ctr);
                 List list = ((SingleInputOperator)operator.getOperator()).executeOnCollections(
                         operator.getParentOperators().get(0).getOperatorOutputAsList(),null,this.env.getConfig());
 
@@ -168,7 +168,7 @@ public class TupleGenerator {
 				this.opTypeShortNameToOperator.put("CROSS" + ctr, operator);
 				dataStream = crossResult;
 				this.lineageAdds.add(index++, crossResult);
-              //  getUnusedExamplesForOperator(operator,"CROSS"+ctr);
+              //  getUnusedExamplesForOperatorTest(operator,"CROSS"+ctr);
 			}
 			
 			if(operator.getOperatorType() == OperatorType.UNION){
@@ -181,7 +181,7 @@ public class TupleGenerator {
 				this.opTypeShortNameToOperator.put("UNION" + ctr, operator);
 				dataStream = unionResult;
 				this.lineageAdds.add(index++, unionResult);
-               // getUnusedExamplesForOperator(operator,"UNION"+ctr);
+               // getUnusedExamplesForOperatorTest(operator,"UNION"+ctr);
                 List list = ((DualInputOperator)operator.getOperator()).executeOnCollections(
                         operator.getParentOperators().get(0).getOperatorOutputAsList(),
                         operator.getParentOperators().get(1).getOperatorOutputAsList(),null,this.env.getConfig());
@@ -199,11 +199,11 @@ public class TupleGenerator {
                 this.opTypeShortNameToOperator.put("DISTINCT" + ctr, operator);
                 dataStream = distinctResult;
                 this.lineageAdds.add(index++, distinctResult);
-                // getUnusedExamplesForOperator(operator,"PROJECT"+ctr);
+                // getUnusedExamplesForOperatorTest(operator,"PROJECT"+ctr);
                 List list = ((SingleInputOperator)operator.getOperator()).executeOnCollections(
                         operator.getParentOperators().get(0).getOperatorOutputAsList(),null,this.env.getConfig());
                 operator.setOperatorOutputAsList(list);
-                System.out.println("DISTINCT");
+                System.out.println("DISTINCT "+operator.getOperatorName());
                 for(Object object:list)
                     System.out.println(object);
             }
@@ -211,40 +211,84 @@ public class TupleGenerator {
 
 		}
 	}
+
+    public Object returnRandomTuple(List parentOutput, Random randomGenerator){
+        int index = randomGenerator.nextInt(parentOutput.size());
+        return parentOutput.get(index);
+    }
 	
 	public void upStreamPass(List<SingleOperator> operatorTree) throws Exception{
 		
 		for(int ctr = operatorTree.size();ctr > 0; ctr-- ){
 			SingleOperator operator = operatorTree.get(ctr - 1);
-			if(operator.getEquivalenceClasses() !=  null && operator.getOperatorType() == OperatorType.JOIN)
-			for(EquivalenceClass eqClass : operator.getEquivalenceClasses()){
-				if(eqClass.hasExample()){
-                    String[] tokens = {"Test","ITShouldMatch"};
-					Tuple parent1Tuple = getConstraintRecord(operator.getParentOperators().get(0),
-                            new LinkedList<String>(Arrays.asList(tokens)));
-                    operator.getParentOperators().get(0).getOperatorOutputAsList().add(parent1Tuple);
-                    propagateConstraintRecordUpstream(operator.getParentOperators().get(0),parent1Tuple);
-                    String[] secondTokens = {"ITShouldMatch","9"};
-                    Tuple parent2Tuple = getConstraintRecord(operator.getParentOperators().get(1),
-                            new LinkedList<String>(Arrays.asList(secondTokens)));
-                    operator.getParentOperators().get(1).getOperatorOutputAsList().add(parent2Tuple);
-                    propagateConstraintRecordUpstream(operator.getParentOperators().get(1),parent2Tuple);
+            //todo logic for not including source
+			if(operator.getEquivalenceClasses() !=  null && operator.getOperatorType() == OperatorType.JOIN) {
+                for (EquivalenceClass eqClass : operator.getEquivalenceClasses()) {
+                    if (eqClass.hasExample()||!eqClass.hasExample()) {
+                        String[] tokens = {"Test", "ITShouldMatch"};
+                        Tuple parent1Tuple = getConstraintRecord(operator.getParentOperators().get(0),
+                                new LinkedList<String>(Arrays.asList(tokens)));
+                        operator.getParentOperators().get(0).getOperatorOutputAsList().add(parent1Tuple);
+                        this.operatorToConstraintRecordMap.put(operator.getParentOperators().get(0),parent1Tuple);
+                        propagateConstraintRecordUpstream(operator.getParentOperators().get(0), parent1Tuple);
 
-				}
-			}
-				
-			
+                        String[] secondTokens = {"ITShouldMatch", "9"};
+                        Tuple parent2Tuple = getConstraintRecord(operator.getParentOperators().get(1),
+                                new LinkedList<String>(Arrays.asList(secondTokens)));
+                        operator.getParentOperators().get(1).getOperatorOutputAsList().add(parent2Tuple);
+                        this.operatorToConstraintRecordMap.put(operator.getParentOperators().get(1),parent2Tuple);
+                        propagateConstraintRecordUpstream(operator.getParentOperators().get(1), parent2Tuple);
+
+                    }
+                }
+
+            }
+
 		}
 	}
 
-    public void propagateConstraintRecordUpstream(SingleOperator childOperator,Tuple constraintRecord){
+    public void changeConstraintRecordToConcreteRecord(SingleOperator child, SingleOperator operatorWithEmptyEqClass) throws Exception {
+
+        Map<SingleOperator, List> loadOperatorWithUnUsedExamples = new HashMap<SingleOperator, List>();
+        for (SingleOperator parent : child.getParentOperators()) {
+            //convert only if its a leaf operator
+            if (parent.getOperator() instanceof GenericDataSourceBase) {
+                System.out.println("UNUSED-----");
+                List unUsedExamplesAtLeaf = getUnusedExamplesFromBaseTable(parent, child, child.getOperatorOutputAsList());
+                loadOperatorWithUnUsedExamples.put(parent,unUsedExamplesAtLeaf);
+            }
+        }
+        if(operatorWithEmptyEqClass.getOperatorType() == OperatorType.JOIN){
+
+
+        }
+
+    }
+
+    public List getUnusedExamplesFromBaseTable(SingleOperator baseOperator, SingleOperator leafOperator, List usedExamples) throws Exception {
+        List allExamples = baseOperator.getOperatorOutputAsList();
+        List allExamplesAtLeaf = ((SingleInputOperator)leafOperator.getOperator())
+                .executeOnCollections(allExamples, null, this.env.getConfig());
+
+
+        allExamplesAtLeaf.removeAll(usedExamples);
+
+        return allExamplesAtLeaf;
+
+    }
+
+    public void propagateConstraintRecordUpstream(SingleOperator childOperator,Tuple constraintRecord) throws Exception {
         for (SingleOperator parent : childOperator.getParentOperators()) {
             if (childOperator.getOperatorType() != OperatorType.LOAD) {
                 while (parent.getOperatorType() != OperatorType.LOAD) {
                     parent = parent.getParentOperators().get(0);
                     parent.getOperatorOutputAsList().add(constraintRecord);
+                    this.operatorToConstraintRecordMap.put(parent,constraintRecord);
                 }
-               parent.getOperatorOutputAsList().add(constraintRecord);
+                parent.getOperatorOutputAsList().add(constraintRecord);
+                this.operatorToConstraintRecordMap.put(parent,constraintRecord);
+                //parent is LOAD
+                changeConstraintRecordToConcreteRecord(parent, childOperator);
             }
         }
     }
@@ -252,16 +296,7 @@ public class TupleGenerator {
 	public void pruneTuples(){
 		
 	}
-	
-	public DataSet<?> getDataSet(int id) {
 
-		for (int i = 0; i < this.dataSources.size(); i++) {
-			if (this.dataSources.get(i).getId() == id)
-				return this.dataSources.get(i).getDataSet();
-		}
-		return null;
-
-	}
 
 
 
@@ -340,7 +375,7 @@ public class TupleGenerator {
 
     //get unused examples from the sources of the given operator
     //todo : make it only for LOAD operator
-    public Map getUnusedExamplesForOperator(SingleOperator operator, String opTypeShortName) {
+    public Map getUnusedExamplesForOperatorTest(SingleOperator operator, String opTypeShortName) {
         int j = 0;
         int sourceId = -1;
 
