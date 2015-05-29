@@ -47,17 +47,11 @@ public class TupleGenerator {
 		this.dataSources = dataSources;
 		this.operatorTree = operatorTree;
 		this.env = env;
-		//generateTuples(this.dataSources, this.operatorTree);
-		downStreamPass(this.dataSources, this.operatorTree);
-        //env.execute();
-		//getRecordLineage(readExampleTuplesIntoCollection(downstreamOutputPath));
-        System.out.println("Lineage Map-------------------");
-        System.out.println(readExampeTuples());
+		downStreamPass(this.operatorTree);
+
         setEquivalenceClasses();
-        for(SingleOperator operator : this.operatorTree)
-            System.out.println(checkEquivalenceClasses(operator));
-        //setEquivalenceClassesTest(readExampleTuplesIntoCollection(downstreamOutputPath));
-		upStreamPass(this.operatorTree);
+        upStreamPass(this.operatorTree);
+
         System.out.println("Added-------------------");
         Map addedResult = readExampeTuples();
         Iterator keyIterator = addedResult.keySet().iterator();
@@ -70,7 +64,7 @@ public class TupleGenerator {
 		//System.out.println(this.lineageGroup);
 	}
 
-	public void downStreamPass(List<InputDataSource> dataSources,List<SingleOperator> operatorTree) throws Exception{
+	public void downStreamPassTest(List<InputDataSource> dataSources, List<SingleOperator> operatorTree) throws Exception{
 		
 		int index = 0;
 		DataSet<?> dataStream = null ;
@@ -103,7 +97,7 @@ public class TupleGenerator {
 				loadSet[id].writeAsCsv(Config.outputPath() + "/TEST/downStream/LOAD" + ctr, WriteMode.OVERWRITE);
 				this.opTypeShortNameToOperator.put("LOAD" + ctr, operator);
 				this.lineageAdds.add(index++, loadSet[id]);
-                getUnusedExamplesForOperatorTest(operator, "LOAD" + id);
+                //getUnusedExamplesForOperatorTest(operator, "LOAD" + id);
 
                 List inputList = new ArrayList();
                 Random randomGenerator = new Random();
@@ -212,6 +206,183 @@ public class TupleGenerator {
 		}
 	}
 
+    public void downStreamPass(List<SingleOperator> operatorTree) throws Exception {
+        for(int i = 0; i < operatorTree.size();i++){
+            SingleOperator operator = operatorTree.get(i);
+
+            if(operator.getOperatorType() == OperatorType.SOURCE){
+
+                List list = ((GenericDataSourceBase) operator.getOperator()).executeOnCollections(this.env.getConfig());
+                operator.setOperatorOutputAsList(list);
+                System.out.println("SOURCE "+operator.getOperatorName());
+                for(Object object:list)
+                    System.out.println(object);
+            }
+
+            if(operator.getOperatorType() == OperatorType.LOAD){
+
+                List inputList = new ArrayList();
+                Random randomGenerator = new Random();
+                inputList.add(returnRandomTuple(operator.getParentOperators().get(0).getOperatorOutputAsList(),randomGenerator));
+                inputList.add(returnRandomTuple(operator.getParentOperators().get(0).getOperatorOutputAsList(),randomGenerator));
+
+                List list = ((SingleInputOperator)operator.getOperator()).executeOnCollections(inputList,
+                        null,this.env.getConfig());
+                operator.setOperatorOutputAsList(list);
+                System.out.println("LOAD " +operator.getOperatorName());
+                for(Object object:list)
+                    System.out.println(object);
+            }
+
+            if(operator.getOperatorType() == OperatorType.JOIN){
+
+                List list = ((DualInputOperator)operator.getOperator()).executeOnCollections(
+                        operator.getParentOperators().get(0).getOperatorOutputAsList(),
+                        operator.getParentOperators().get(1).getOperatorOutputAsList(),null,this.env.getConfig());
+                operator.setOperatorOutputAsList(list);
+                System.out.println("JOIN");
+                for(Object object:list)
+                    System.out.println(object);
+            }
+
+            if(operator.getOperatorType() == OperatorType.PROJECT){
+
+                List list = ((SingleInputOperator)operator.getOperator()).executeOnCollections(
+                        operator.getParentOperators().get(0).getOperatorOutputAsList(),null,this.env.getConfig());
+
+                operator.setOperatorOutputAsList(list);
+                System.out.println("PROJECT");
+                for(Object object:list)
+                    System.out.println(object);
+            }
+
+            if(operator.getOperatorType() == OperatorType.CROSS){
+
+                List list = ((DualInputOperator)operator.getOperator()).executeOnCollections(
+                        operator.getParentOperators().get(0).getOperatorOutputAsList(),
+                        operator.getParentOperators().get(1).getOperatorOutputAsList(),null,this.env.getConfig());
+                operator.setOperatorOutputAsList(list);
+                System.out.println("CROSS");
+                for(Object object:list)
+                    System.out.println(object);
+
+            }
+
+            if(operator.getOperatorType() == OperatorType.UNION){
+
+                List list = ((DualInputOperator)operator.getOperator()).executeOnCollections(
+                        operator.getParentOperators().get(0).getOperatorOutputAsList(),
+                        operator.getParentOperators().get(1).getOperatorOutputAsList(),null,this.env.getConfig());
+                operator.setOperatorOutputAsList(list);
+                System.out.println("UNION");
+                for(Object object:list)
+                    System.out.println(object);
+            }
+
+            if(operator.getOperatorType() == OperatorType.DISTINCT){
+
+                List list = ((SingleInputOperator)operator.getOperator()).executeOnCollections(
+                        operator.getParentOperators().get(0).getOperatorOutputAsList(),null,this.env.getConfig());
+                operator.setOperatorOutputAsList(list);
+                System.out.println("DISTINCT "+operator.getOperatorName());
+                for(Object object:list)
+                    System.out.println(object);
+            }
+        }
+    }
+
+    public void checkAgain(List<SingleOperator> operatorTree, SingleOperator operatorWithEmptyEqClass) throws Exception {
+
+        Map<SingleOperator,List> operatorToNewExamplesMap = new HashMap<SingleOperator, List>();
+
+
+        for(int i = 0; i < operatorTree.size();i++){
+            SingleOperator operator = operatorTree.get(i);
+
+            if(operator.getOperatorType() == OperatorType.LOAD){
+
+                List inputList = new ArrayList();
+                Random randomGenerator = new Random();
+
+                inputList.add(returnRandomTuple(getUnusedExamplesFromBaseTable(operator.getParentOperators().get(0),
+                        operator,operator.getOperatorOutputAsList()),randomGenerator));
+
+                List list = ((SingleInputOperator)operator.getOperator()).executeOnCollections(inputList,
+                        null,this.env.getConfig());
+
+                operatorToNewExamplesMap.put(operator,list);
+
+                System.out.println("LOAD " +operator.getOperatorName());
+                for(Object object:list)
+                    System.out.println(object);
+            }
+
+            if(operator.getOperatorType() == OperatorType.JOIN){
+
+                List list = ((DualInputOperator)operator.getOperator()).executeOnCollections(
+                        operatorToNewExamplesMap.get(operator.getParentOperators().get(0)),
+                        operatorToNewExamplesMap.get(operator.getParentOperators().get(1)),null,this.env.getConfig());
+
+                operatorToNewExamplesMap.put(operator,list);
+                System.out.println("JOIN");
+                for(Object object:list)
+                    System.out.println(object);
+            }
+
+            if(operator.getOperatorType() == OperatorType.PROJECT){
+
+                List list = ((SingleInputOperator)operator.getOperator()).executeOnCollections(
+                        operatorToNewExamplesMap.get(operator.getParentOperators().get(0)),null,this.env.getConfig());
+
+                operatorToNewExamplesMap.put(operator,list);
+                System.out.println("PROJECT");
+                for(Object object:list)
+                    System.out.println(object);
+            }
+
+            if(operator.getOperatorType() == OperatorType.CROSS){
+
+                List list = ((DualInputOperator)operator.getOperator()).executeOnCollections(
+                        operatorToNewExamplesMap.get(operator.getParentOperators().get(0)),
+                        operatorToNewExamplesMap.get(operator.getParentOperators().get(1)),null,this.env.getConfig());
+
+                operatorToNewExamplesMap.put(operator,list);
+                System.out.println("CROSS");
+                for(Object object:list)
+                    System.out.println(object);
+
+            }
+
+            if(operator.getOperatorType() == OperatorType.UNION){
+
+                List list = ((DualInputOperator)operator.getOperator()).executeOnCollections(
+                        operatorToNewExamplesMap.get(operator.getParentOperators().get(0)),
+                        operatorToNewExamplesMap.get(operator.getParentOperators().get(1)),null,this.env.getConfig());
+
+                operatorToNewExamplesMap.put(operator,list);
+                System.out.println("UNION");
+                for(Object object:list)
+                    System.out.println(object);
+            }
+
+            if(operator.getOperatorType() == OperatorType.DISTINCT){
+
+                List list = ((SingleInputOperator)operator.getOperator()).executeOnCollections(
+                        operatorToNewExamplesMap.get(operator.getParentOperators().get(0)),null,this.env.getConfig());
+
+                operatorToNewExamplesMap.put(operator,list);
+                System.out.println("DISTINCT "+operator.getOperatorName());
+                for(Object object:list)
+                    System.out.println(object);
+            }
+        }
+        if(operatorToNewExamplesMap.get(operatorWithEmptyEqClass).isEmpty()){
+            checkAgain(this.operatorTree,operatorWithEmptyEqClass);
+        }
+
+
+    }
+
     public Object returnRandomTuple(List parentOutput, Random randomGenerator){
         int index = randomGenerator.nextInt(parentOutput.size());
         return parentOutput.get(index);
@@ -265,11 +436,13 @@ public class TupleGenerator {
 
     }
 
+
+
     public List getUnusedExamplesFromBaseTable(SingleOperator baseOperator, SingleOperator leafOperator, List usedExamples) throws Exception {
+
         List allExamples = baseOperator.getOperatorOutputAsList();
         List allExamplesAtLeaf = ((SingleInputOperator)leafOperator.getOperator())
                 .executeOnCollections(allExamples, null, this.env.getConfig());
-
 
         allExamplesAtLeaf.removeAll(usedExamples);
 
@@ -371,42 +544,6 @@ public class TupleGenerator {
         return constraintRecord;
     }
 	
-
-
-    //get unused examples from the sources of the given operator
-    //todo : make it only for LOAD operator
-    public Map getUnusedExamplesForOperatorTest(SingleOperator operator, String opTypeShortName) {
-        int j = 0;
-        int sourceId = -1;
-
-        if (operator.getOperatorType() != OperatorType.SOURCE) {
-            for (SingleOperator parent : operator.getParentOperators()) {
-                DataSet usedLoadExamples;
-                if (operator.getOperatorType() != OperatorType.LOAD) {
-                    while (parent.getOperatorType() != OperatorType.LOAD) {
-                        parent = parent.getParentOperators().get(0);
-                    }
-                usedLoadExamples = parent.getOutputExampleTuples();
-                }
-                else
-                usedLoadExamples = operator.getOutputExampleTuples();
-
-                while (parent.getOperatorType() != OperatorType.SOURCE) {
-                    parent = parent.getParentOperators().get(0);
-                    sourceId = parent.getOperatorInputDataSetId().get(0);
-                }
-                DataSet mainSourceExamples = parent.getOutputExampleTuples();
-                DataSet unUsedExamples = mainSourceExamples.filter(new TupleFilter()).withBroadcastSet(usedLoadExamples, "filterset");
-                this.unUsedExamplesToSourceMap.put(opTypeShortName, unUsedExamples);
-                if(operator.getParentOperators().size() > 1)
-                    unUsedExamples.writeAsCsv(Config.outputPath() + "/TEST/UNUSED/" + opTypeShortName +j++, WriteMode.OVERWRITE);
-                else
-                    unUsedExamples.writeAsCsv(Config.outputPath() + "/TEST/UNUSED/" + opTypeShortName +"/", WriteMode.OVERWRITE);
-
-            }
-        }
-        return this.unUsedExamplesToSourceMap;
-    }
 
     //Todo : check for all types
     public Tuple drillToBasicType(TypeInformation typeInformation, List tokens) throws IllegalAccessException, InstantiationException {
