@@ -63,7 +63,16 @@ public class TupleGenerator {
         for(SingleOperator operator : this.operatorTree)
             System.out.println(checkEquivalenceClasses(operator));
         //setEquivalenceClassesTest(readExampleTuplesIntoCollection(downstreamOutputPath));
-		//upStreamPass(this.operatorTree);
+		upStreamPass(this.operatorTree);
+        System.out.println("Added-------------------");
+        Map addedResult = readExampeTuples();
+        Iterator keyIterator = addedResult.keySet().iterator();
+        while(keyIterator.hasNext()){
+            Object key = keyIterator.next();
+            System.out.println(key);
+            System.out.println(addedResult.get(key));
+        }
+
 		//System.out.println(this.lineageGroup);
 	}
 
@@ -207,20 +216,38 @@ public class TupleGenerator {
 		
 		for(int ctr = operatorTree.size();ctr > 0; ctr-- ){
 			SingleOperator operator = operatorTree.get(ctr - 1);
-			if(operator.getEquivalenceClasses() !=  null)
+			if(operator.getEquivalenceClasses() !=  null && operator.getOperatorType() == OperatorType.JOIN)
 			for(EquivalenceClass eqClass : operator.getEquivalenceClasses()){
 				if(eqClass.hasExample()){
-					DataSet constraintRecord = getConstraintRecords(operator);
-					//System.out.println("Constraint Record :"+constraintRecord.writeAsCsv(Config.outputPath()+"/TEST/upstream/ConstraintRecords"+ctr,WriteMode.OVERWRITE));
+                    String[] tokens = {"Test","ITShouldMatch"};
+					Tuple parent1Tuple = getConstraintRecord(operator.getParentOperators().get(0),
+                            new LinkedList<String>(Arrays.asList(tokens)));
+                    operator.getParentOperators().get(0).getOperatorOutputAsList().add(parent1Tuple);
+                    propagateConstraintRecordUpstream(operator.getParentOperators().get(0),parent1Tuple);
+                    String[] secondTokens = {"ITShouldMatch","9"};
+                    Tuple parent2Tuple = getConstraintRecord(operator.getParentOperators().get(1),
+                            new LinkedList<String>(Arrays.asList(secondTokens)));
+                    operator.getParentOperators().get(1).getOperatorOutputAsList().add(parent2Tuple);
+                    propagateConstraintRecordUpstream(operator.getParentOperators().get(1),parent2Tuple);
 
-                    //printAllDataSets();
-                    //this.env.execute();
 				}
 			}
 				
 			
 		}
 	}
+
+    public void propagateConstraintRecordUpstream(SingleOperator childOperator,Tuple constraintRecord){
+        for (SingleOperator parent : childOperator.getParentOperators()) {
+            if (childOperator.getOperatorType() != OperatorType.LOAD) {
+                while (parent.getOperatorType() != OperatorType.LOAD) {
+                    parent = parent.getParentOperators().get(0);
+                    parent.getOperatorOutputAsList().add(constraintRecord);
+                }
+               parent.getOperatorOutputAsList().add(constraintRecord);
+            }
+        }
+    }
 	
 	public void pruneTuples(){
 		
@@ -483,8 +510,14 @@ public class TupleGenerator {
 		}
 		return eqClassMap;
 	}
+
+	public Tuple getConstraintRecord(SingleOperator operator, List tokens) throws IllegalAccessException, InstantiationException {
+
+        Tuple constraintRecord = drillToBasicType(operator.getOperatorOutputType(),tokens);
+        return constraintRecord;
+    }
 	
-	public DataSet getConstraintRecords(SingleOperator operator) throws InstantiationException, IllegalAccessException, IOException {
+	public DataSet getConstraintRecordsTest(SingleOperator operator) throws InstantiationException, IllegalAccessException, IOException {
 		DataSet dataSetToReturn;
 		TypeInformation outputType = operator.getOperatorOutputType();
 		System.out.println("Operator :"+operator.getOperatorType()+" DataSetID "+operator.getOperatorInputDataSetId());
@@ -492,12 +525,12 @@ public class TupleGenerator {
         //System.out.println(drillToBasicType(outputType));
         //dataSetToReturn = this.env.fromElements(drillToBasicType(outputType));
 
-        return constructConstraintRecords(operator);
+        return constructConstraintRecordsTest(operator);
         //return dataSetToReturn;
 
 	}
 
-    public DataSet constructConstraintRecords(SingleOperator operator) throws IOException, InstantiationException, IllegalAccessException {
+    public DataSet constructConstraintRecordsTest(SingleOperator operator) throws IOException, InstantiationException, IllegalAccessException {
 
         DataSet dataSetToReturn = null;
       /*  DataSet alreadyPresentExamples = null;                              //TODO: logic similar to this
@@ -533,14 +566,14 @@ public class TupleGenerator {
             setWithConstraintRecord2.writeAsCsv(Config.outputPath()+"/TEST/CONSTRAINTRECORDS2",WriteMode.OVERWRITE);
 
             System.out.println();
-            propagateConstraintRecordUpstream(operatorToDataSetMap,operator);
+            propagateConstraintRecordUpstreamTest(operatorToDataSetMap, operator);
 
         }
 
         return dataSetToReturn;
     }
 
-    public void propagateConstraintRecordUpstream(Map<SingleOperator, DataSet> constraintRecordList, SingleOperator operator) {
+    public void propagateConstraintRecordUpstreamTest(Map<SingleOperator, DataSet> constraintRecordList, SingleOperator operator) {
 
         int i = 0;
         Iterator keyIt = constraintRecordList.keySet().iterator();
