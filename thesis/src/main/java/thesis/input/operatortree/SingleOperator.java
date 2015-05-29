@@ -6,6 +6,7 @@ import org.apache.flink.api.common.operators.Operator;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.api.java.DataSet;
 
+import org.apache.flink.api.java.tuple.Tuple;
 import thesis.algorithm.semantics.EquivalenceClass;
 
 public class SingleOperator {
@@ -26,6 +27,16 @@ public class SingleOperator {
     private List<SingleOperator> parentOperators;
     private int outputDataSetId;
     private List operatorOutputAsList;
+    private Tuple constraintRecords;
+
+
+    public Tuple getConstraintRecords() {
+        return constraintRecords;
+    }
+
+    public void setConstraintRecords(Tuple constraintRecords) {
+        this.constraintRecords = constraintRecords;
+    }
 
     public List getOperatorOutputAsList() {
         return operatorOutputAsList;

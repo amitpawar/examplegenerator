@@ -31,7 +31,7 @@ public class TupleGenerator {
     private Map<String, DataSet> unUsedExamplesToSourceMap = new HashMap<String, DataSet>();
     private final String downstreamOutputPath = "/home/amit/thesis/output3/TEST/downStream";
     private Map<SingleOperator, Tuple> operatorToConstraintRecordMap = new HashMap<SingleOperator, Tuple>();
-
+    private Object joinKey = null;
 
     public List<DataSet> getLineageAdds() {
         return lineageAdds;
@@ -310,6 +310,7 @@ public class TupleGenerator {
                         Tuple parent1Tuple = getConstraintRecord(operator.getParentOperators().get(0),
                                 new LinkedList<String>(Arrays.asList(firstTokens)));
                         operator.getParentOperators().get(0).getOperatorOutputAsList().add(parent1Tuple);
+                        operator.getParentOperators().get(0).setConstraintRecords(parent1Tuple);
                         this.operatorToConstraintRecordMap.put(operator.getParentOperators().get(0), parent1Tuple);
                         propagateConstraintRecordUpstream(operator.getParentOperators().get(0), parent1Tuple, operator);
 
@@ -317,6 +318,7 @@ public class TupleGenerator {
                         Tuple parent2Tuple = getConstraintRecord(operator.getParentOperators().get(1),
                                 new LinkedList<String>(Arrays.asList(secondTokens)));
                         operator.getParentOperators().get(1).getOperatorOutputAsList().add(parent2Tuple);
+                        operator.getParentOperators().get(1).setConstraintRecords(parent2Tuple);
                         this.operatorToConstraintRecordMap.put(operator.getParentOperators().get(1), parent2Tuple);
                         propagateConstraintRecordUpstream(operator.getParentOperators().get(1), parent2Tuple, operator);
 
@@ -343,20 +345,31 @@ public class TupleGenerator {
 
     public void changeConstraintRecordToConcreteRecord(SingleOperator child, SingleOperator operatorWithEmptyEqClass) throws Exception {
         //child = leaf , parent = basetable
-        Map<SingleOperator, List> loadOperatorWithUnUsedExamples = new HashMap<SingleOperator, List>();
-        for (SingleOperator parent : child.getParentOperators()) {
-            //convert only if its a leaf operator
-            if (parent.getOperator() instanceof GenericDataSourceBase) {
-                System.out.println("UNUSED-----");
-                List unUsedExamplesAtLeaf = getUnusedExamplesFromBaseTable(parent, child, child.getOperatorOutputAsList());
-                loadOperatorWithUnUsedExamples.put(child, unUsedExamplesAtLeaf);
+        Map<SingleOperator, List> loadOperatorWithUnUsedExamples = new LinkedHashMap<SingleOperator, List>();
+        SingleOperator parent = child.getParentOperators().get(0);
+        //convert only if its a leaf operator
+        if (parent.getOperator() instanceof GenericDataSourceBase) {
+            System.out.println("UNUSED-----");
+            List unUsedExamplesAtLeaf = getUnusedExamplesFromBaseTable(parent, child, child.getOperatorOutputAsList());
+            loadOperatorWithUnUsedExamples.put(child, unUsedExamplesAtLeaf);
+            Tuple constraintRecord = child.getConstraintRecords();
+            for (int i = 0; i < constraintRecord.getArity(); i++) {
+                if (constraintRecord.getField(i) == "JOINKEY") {
+                    Random random = new Random();
+                    if (this.joinKey == null)
+                        this.joinKey = ((Tuple) returnRandomTuple(unUsedExamplesAtLeaf, random)).getField(i);
+                    constraintRecord.setField(this.joinKey, i);
+                }
+                if (constraintRecord.getField(i) == "DONTCARE") {
+                    Random random = new Random();
+                    Object randomValue = ((Tuple) returnRandomTuple(unUsedExamplesAtLeaf, random)).getField(i);
+                    constraintRecord.setField(randomValue, i);
+
+                }
+
             }
+            System.out.println("-------------------Changed Constraint Record-----------" + constraintRecord);
         }
-        if (operatorWithEmptyEqClass.getOperatorType() == OperatorType.JOIN) {
-
-
-        }
-
     }
 
 
@@ -378,9 +391,11 @@ public class TupleGenerator {
                 while (parent.getOperatorType() != OperatorType.LOAD) {
                     parent = parent.getParentOperators().get(0);
                     parent.getOperatorOutputAsList().add(constraintRecord);
+                    parent.setConstraintRecords(constraintRecord);
                     this.operatorToConstraintRecordMap.put(parent, constraintRecord);
                 }
                 parent.getOperatorOutputAsList().add(constraintRecord);
+                parent.setConstraintRecords(constraintRecord);
                 this.operatorToConstraintRecordMap.put(parent, constraintRecord);
                 //parent is LOAD
                 changeConstraintRecordToConcreteRecord(parent, operatorWithEmptyEqClass);
