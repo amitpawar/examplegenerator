@@ -263,14 +263,7 @@ public class TupleGenerator {
 
 	}
 
-	@SuppressWarnings({ "unchecked", "rawtypes" })
-	public Collection getCollectionForDataSet(DataSet dataset, ExecutionEnvironment env) throws Exception{
-		Set collection = new HashSet();
-		RemoteCollectorImpl.collectLocal(dataset, collection);
-		env.execute();
-		RemoteCollectorImpl.shutdownAll();
-		return collection;
-	}
+
 
     public Map readExampeTuples(){
         Map<String, Collection> lineageMap = new HashMap<String, Collection>();
@@ -280,67 +273,6 @@ public class TupleGenerator {
         return  lineageMap;
     }
 	
-	public Map readExampleTuplesIntoCollectionTest(String outputPath)
-            throws IOException, InstantiationException, IllegalAccessException {
-
-		Map<String, Collection> lineageMap = new HashMap<String, Collection>(); //<filename, exampletuples>
-		File outputDirectory = new File(outputPath);
-		String line;
-
-		for (File fileEntry : outputDirectory.listFiles()) {
-			if (fileEntry.isDirectory()) {
-				List<Tuple> tupleExampleSet = new ArrayList<Tuple>();
-                List stringExampleSet = new ArrayList();
-				for (File insideFile : fileEntry.listFiles()) {
-					BufferedReader br = new BufferedReader(new FileReader(insideFile));
-					while ((line = br.readLine()) != null) {
-                        TypeInformation type = this.opTypeShortNameToOperator.get(fileEntry.getName()).getOperatorOutputType();
-                        if(type.isTupleType())
-                            tupleExampleSet.add(stringToTuple(line, type));
-                        else
-                            stringExampleSet.add(line);
-					}
-                    if(tupleExampleSet.size() > 1)
-					    lineageMap.put(fileEntry.getName(), tupleExampleSet);
-                    if(stringExampleSet.size() > 1)
-                        lineageMap.put(fileEntry.getName(),stringExampleSet);
-					br.close();
-				}
-
-			}
-			else if (fileEntry.isFile()){
-				List<Tuple> tupleExampleSet = new ArrayList<Tuple>();
-                List stringExampleSet = new ArrayList();
-				BufferedReader br = new BufferedReader(new FileReader(fileEntry));
-				while ((line = br.readLine()) != null) {
-                    TypeInformation type = this.opTypeShortNameToOperator.get(fileEntry.getName()).getOperatorOutputType();
-                    if(type.isTupleType())
-                        tupleExampleSet.add(stringToTuple(line, type));
-                    else
-                        stringExampleSet.add(line);
-				}
-                if(tupleExampleSet.size() > 1)
-                    lineageMap.put(fileEntry.getName(), tupleExampleSet);
-                if(stringExampleSet.size() > 1)
-                    lineageMap.put(fileEntry.getName(),stringExampleSet);
-                br.close();
-			}
-		}
-		return lineageMap;
-	}
-
-    public Tuple stringToTuple(String line, TypeInformation typeInformation) throws IllegalAccessException, InstantiationException {
-
-        Pattern toSplit = Pattern.compile("[ \t,]");
-        String[] tokens = toSplit.split(line.replaceAll("[\\(\\)]",""));
-
-        Tuple convertedTuple = drillToBasicType(typeInformation, new LinkedList<String>(Arrays.asList(tokens)));
-
-        System.out.println(tokens);
-        return convertedTuple;
-    }
-
-
     public void setEquivalenceClasses(){
         for(SingleOperator operator : this.operatorTree){
 
@@ -377,116 +309,10 @@ public class TupleGenerator {
         }
     }
 	
-	public void setEquivalenceClassesTest(Map lineageMap){
-		
-		Iterator operatorIt = lineageMap.keySet().iterator();
-		
-		while(operatorIt.hasNext()){
-			String opName = operatorIt.next().toString();
-			
-			if(opName.contains("LOAD")){
-				List loadExamples = (List)lineageMap.get(opName);
-				LoadEquivalenceClasses loadEqClasses = new LoadEquivalenceClasses();
-				
-				if(!loadExamples.isEmpty()){
-					loadEqClasses.getLoadExample().setHasExample(true);
-				}
-				else
-					loadEqClasses.getLoadExample().setHasExample(false);
-				
-				SingleOperator load = this.opTypeShortNameToOperator.get(opName);
-				List<EquivalenceClass> eqClass = new ArrayList<EquivalenceClass>();
-				eqClass.add(loadEqClasses.getLoadExample());
-				load.setEquivalenceClasses(eqClass);
-				System.out.println(checkEqclassesTest(load));
-			}
-			
-			if(opName.contains("JOIN")){
-				List joinExamples = (List)lineageMap.get(opName);
-				JoinEquivalenceClasses joinEqClasses = new JoinEquivalenceClasses();
-				if(!joinExamples.isEmpty()){
-					joinEqClasses.getJoinedExample().setHasExample(true);
-				}
-				else
-					joinEqClasses.getJoinedExample().setHasExample(false);
-				
-				SingleOperator join = this.opTypeShortNameToOperator.get(opName);
-				List<EquivalenceClass> eqClass = new ArrayList<EquivalenceClass>();
-				eqClass.add(joinEqClasses.getJoinedExample());
-				join.setEquivalenceClasses(eqClass);
-				System.out.println(checkEqclassesTest(join));
-			}
-			
-		}
-	
-		
-	}	
-	
-	public void getRecordLineage(Map lineageMap){
-		
-		Pattern integerOnly = Pattern.compile("\\d+");
-		List<Integer> opOrder = new ArrayList<Integer>();
-		List<LinkedList> lineages = new ArrayList<LinkedList>();
-		Set operatorSet = lineageMap.keySet();
-		Iterator opIt = operatorSet.iterator();
-		
-		while(opIt.hasNext()){
-			String operatorName = opIt.next().toString();
-			Matcher makeMatch = integerOnly.matcher(operatorName);
-			makeMatch.find();
-			opOrder.add(Integer.parseInt(makeMatch.group()));
-		}
-		
-		Collections.sort(opOrder, Collections.reverseOrder());
-		for(int id : opOrder){
-			Iterator nameIt = operatorSet.iterator();
-			while(nameIt.hasNext()){
-				String name = nameIt.next().toString();
-				if(name.contains(Integer.toString(id))){
-					List examplesForThisOperator = (List) lineageMap.get(name);
-					Iterator exIt = examplesForThisOperator.iterator();
-					while(exIt.hasNext()){
-						LinkedList lineage = new LinkedList();
-						String lineageLast = (String) exIt.next();
-						lineage.add(lineageLast);
-						lineages.add(lineage);
-						//System.out.println(constructRecordLineage(lineageMap, opOrder, id, lineage, lineageLast));
-					}
-							
-				}
-			}
-		}
-		setEquivalenceClassesTest(lineageMap);
-		
-	}
-	
-	public List constructRecordLineage(Map lineageMap, List<Integer> opOrder,
-			int id, LinkedList lineageGroup, String lineageLast) {
 
-		for (int op : opOrder) {
-			if (op < id) {
-				Iterator keyIt = lineageMap.keySet().iterator();
-				while (keyIt.hasNext()) {
-					String keyName = keyIt.next().toString();
-					if (keyName.contains(Integer.toString(op))) {
-						List examples = (List) lineageMap.get(keyName);
-						Iterator it = examples.iterator();
-						while (it.hasNext()) {
-							String nextLineage = it.next().toString();
-							if (keyName.contains("LOAD")) {
-								nextLineage = "(" + nextLineage + ")";
-							}
-							if (nextLineage.contains(lineageLast) || lineageLast.contains(nextLineage)) {
-								//lineageGroup.add(nextLineage);
-								lineageGroup.addFirst(nextLineage);
-							}
-						}
-					}
-				}
-			}
-		}
-		return lineageGroup;
-	}
+
+	
+
 
     public String checkEquivalenceClasses(SingleOperator operator){
         String returnString = "";
@@ -503,13 +329,6 @@ public class TupleGenerator {
         return returnString;
     }
 
-	public Map checkEqclassesTest(SingleOperator op){
-		Map<String,Boolean> eqClassMap = new HashMap<String, Boolean>();
-		for(EquivalenceClass eqClass : op.getEquivalenceClasses()){
-			eqClassMap.put(eqClass.getName(), eqClass.hasExample());
-		}
-		return eqClassMap;
-	}
 
 	public Tuple getConstraintRecord(SingleOperator operator, List tokens) throws IllegalAccessException, InstantiationException {
 
@@ -517,86 +336,7 @@ public class TupleGenerator {
         return constraintRecord;
     }
 	
-	public DataSet getConstraintRecordsTest(SingleOperator operator) throws InstantiationException, IllegalAccessException, IOException {
-		DataSet dataSetToReturn;
-		TypeInformation outputType = operator.getOperatorOutputType();
-		System.out.println("Operator :"+operator.getOperatorType()+" DataSetID "+operator.getOperatorInputDataSetId());
-        System.out.println(outputType);
-        //System.out.println(drillToBasicType(outputType));
-        //dataSetToReturn = this.env.fromElements(drillToBasicType(outputType));
 
-        return constructConstraintRecordsTest(operator);
-        //return dataSetToReturn;
-
-	}
-
-    public DataSet constructConstraintRecordsTest(SingleOperator operator) throws IOException, InstantiationException, IllegalAccessException {
-
-        DataSet dataSetToReturn = null;
-      /*  DataSet alreadyPresentExamples = null;                              //TODO: logic similar to this
-        DataSet constraintRecords = null;
-        dataSetToReturn = alreadyPresentExamples.union(constraintRecords);*/
-        Map<SingleOperator,DataSet> operatorToDataSetMap = new HashMap<SingleOperator, DataSet>();
-
-        if(operator.getOperatorType() == OperatorType.JOIN){
-
-            SingleOperator parent1 = operator.getParentOperators().get(0);
-            SingleOperator parent2 = operator.getParentOperators().get(1);
-
-            DataSet parent1Examples = parent1.getOutputExampleTuples();
-            DataSet parent2Examples = parent2.getOutputExampleTuples();
-
-            JUCCondition joinCondition = operator.getJUCCondition();
-            int[] whereClause = joinCondition.getFirstInputKeyColumns();
-            int[] equalsToClause = joinCondition.getSecondInputKeyColumns();
-
-            DataSet addTup1 = null; //this.env.fromElements((drillToBasicType(parent1.getOperatorOutputType(), whereClause[0], "AMITTEST")));
-            DataSet addTup2 = null; //this.env.fromElements(drillToBasicType(parent2.getOperatorOutputType(), equalsToClause[0], "AMITTEST"));
-
-            operatorToDataSetMap.put(parent1,addTup1);
-            operatorToDataSetMap.put(parent2,addTup2);
-
-            DataSet setWithConstraintRecord1 =  parent1Examples.union(addTup1);
-            DataSet setWithConstraintRecord2 = parent2Examples.union(addTup2);
-
-            parent1.setOutputExampleTuples(setWithConstraintRecord1);
-            parent2.setOutputExampleTuples(setWithConstraintRecord2);
-
-            setWithConstraintRecord1.writeAsCsv(Config.outputPath()+"/TEST/CONSTRAINTRECORDS1",WriteMode.OVERWRITE);
-            setWithConstraintRecord2.writeAsCsv(Config.outputPath()+"/TEST/CONSTRAINTRECORDS2",WriteMode.OVERWRITE);
-
-            System.out.println();
-            propagateConstraintRecordUpstreamTest(operatorToDataSetMap, operator);
-
-        }
-
-        return dataSetToReturn;
-    }
-
-    public void propagateConstraintRecordUpstreamTest(Map<SingleOperator, DataSet> constraintRecordList, SingleOperator operator) {
-
-        int i = 0;
-        Iterator keyIt = constraintRecordList.keySet().iterator();
-        while (keyIt.hasNext()) {
-            SingleOperator childOperator = (SingleOperator) keyIt.next();
-            for (SingleOperator parent : childOperator.getParentOperators()) {
-                DataSet unionedSet = constraintRecordList.get(childOperator);
-                if (operator.getOperatorType() != OperatorType.LOAD) {
-                    while (parent.getOperatorType() != OperatorType.LOAD) {
-                        parent = parent.getParentOperators().get(0);
-                        unionedSet = (parent.getOutputExampleTuples().union(constraintRecordList.get(childOperator)));
-                        unionedSet.writeAsCsv(Config.outputPath() + "/TEST/REWRITE/" + parent.getOperatorType() + i++, WriteMode.OVERWRITE);
-                    }
-                    unionedSet = (parent.getOutputExampleTuples().union(constraintRecordList.get(childOperator)));
-                }
-                /*else
-                    unionedSet = (parent.getOutputExampleTuples().union(constraintRecordList.get(childOperator)));*/
-
-                unionedSet.writeAsCsv(Config.outputPath() + "/TEST/REWRITE/" + parent.getOperatorType() + i++, WriteMode.OVERWRITE);
-            }
-        }
-
-    }
 
     //get unused examples from the sources of the given operator
     //todo : make it only for LOAD operator
@@ -661,24 +401,7 @@ public class TupleGenerator {
 
     }
 
-    public void printAllDataSets(){
-        for(int i = 0; i < this.operatorTree.size();i++){
-            if(this.operatorTree.get(i).getOutputExampleTuples() != null)
-                this.operatorTree.get(i).getOutputExampleTuples().writeAsCsv(Config.outputPath()+"/TEST/REWRITE/"+this.operatorTree.get(i).getOperatorType()+""+i,WriteMode.OVERWRITE);
-        }
-    }
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
+
 	
 	/////////////////////////////
 	
