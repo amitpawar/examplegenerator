@@ -218,6 +218,7 @@ public class TupleGenerator {
                     System.out.println(object);
             }
 
+
             if (operator.getOperatorType() == OperatorType.LOAD) {
 
                 List inputList = new ArrayList();
@@ -233,7 +234,17 @@ public class TupleGenerator {
                     System.out.println(object);
             }
 
-            if (operator.getOperatorType() == OperatorType.JOIN) {
+            if(operator.getOperatorType() != OperatorType.SOURCE && operator.getOperatorType() != OperatorType.LOAD){
+                List output = executeIndividualOperator(operator);
+                System.out.println(operator.getOperatorType());
+                operator.setOperatorOutputAsList(output);
+                for (Object object : output)
+                    System.out.println(object);
+
+            }
+
+
+             /* if (operator.getOperatorType() == OperatorType.JOIN) {
 
                 List list = ((DualInputOperator) operator.getOperator()).executeOnCollections(
                         operator.getParentOperators().get(0).getOperatorOutputAsList(),
@@ -286,8 +297,23 @@ public class TupleGenerator {
                 System.out.println("DISTINCT " + operator.getOperatorName());
                 for (Object object : list)
                     System.out.println(object);
-            }
+            }*/
         }
+    }
+
+    public List executeIndividualOperator(SingleOperator singleOperator) throws Exception {
+        List output = new ArrayList();
+        Operator operator = singleOperator.getOperator();
+        if(operator instanceof SingleInputOperator){
+            List input1 = singleOperator.getParentOperators().get(0).getOperatorOutputAsList();
+            output = ((SingleInputOperator) operator).executeOnCollections(input1,null,this.env.getConfig());
+        }
+        if(operator instanceof DualInputOperator){
+            List input1 = singleOperator.getParentOperators().get(0).getOperatorOutputAsList();
+            List input2 = singleOperator.getParentOperators().get(1).getOperatorOutputAsList();
+            output = ((DualInputOperator) operator).executeOnCollections(input1,input2,null,this.env.getConfig());
+        }
+        return output;
     }
 
     public Object returnRandomTuple(List parentOutput, Random randomGenerator) {
@@ -343,7 +369,7 @@ public class TupleGenerator {
         return tokens;
     }
 
-    public void changeConstraintRecordToConcreteRecord(SingleOperator child, SingleOperator operatorWithEmptyEqClass) throws Exception {
+    public void convertConstraintRecordToConcreteRecord(SingleOperator child, SingleOperator operatorWithEmptyEqClass) throws Exception {
         //child = leaf , parent = basetable
         Map<SingleOperator, List> loadOperatorWithUnUsedExamples = new LinkedHashMap<SingleOperator, List>();
         SingleOperator parent = child.getParentOperators().get(0);
@@ -356,6 +382,7 @@ public class TupleGenerator {
             for (int i = 0; i < constraintRecord.getArity(); i++) {
                 if (constraintRecord.getField(i) == "JOINKEY") {
                     Random random = new Random();
+                    //todo in case of multiple joins
                     if (this.joinKey == null)
                         this.joinKey = ((Tuple) returnRandomTuple(unUsedExamplesAtLeaf, random)).getField(i);
                     constraintRecord.setField(this.joinKey, i);
@@ -369,6 +396,7 @@ public class TupleGenerator {
 
             }
             System.out.println("-------------------Changed Constraint Record-----------" + constraintRecord);
+           // child.getOperatorOutputAsList().add(constraintRecord);
         }
     }
 
@@ -397,8 +425,8 @@ public class TupleGenerator {
                 parent.getOperatorOutputAsList().add(constraintRecord);
                 parent.setConstraintRecords(constraintRecord);
                 this.operatorToConstraintRecordMap.put(parent, constraintRecord);
-                //parent is LOAD
-                changeConstraintRecordToConcreteRecord(parent, operatorWithEmptyEqClass);
+                //parent is LOAD, once load is reached change to concrete
+                convertConstraintRecordToConcreteRecord(parent, operatorWithEmptyEqClass);
             }
         }
     }
