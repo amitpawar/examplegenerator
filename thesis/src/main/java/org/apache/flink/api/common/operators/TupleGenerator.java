@@ -32,6 +32,7 @@ public class TupleGenerator {
     private final String downstreamOutputPath = "/home/amit/thesis/output3/TEST/downStream";
     private Map<SingleOperator, Tuple> operatorToConstraintRecordMap = new HashMap<SingleOperator, Tuple>();
     private Object joinKey = null;
+    private int maxRecords = -1;
 
     public List<DataSet> getLineageAdds() {
         return lineageAdds;
@@ -42,24 +43,16 @@ public class TupleGenerator {
     }
 
     public TupleGenerator(List<InputDataSource> dataSources,
-                          List<SingleOperator> operatorTree, ExecutionEnvironment env) throws Exception {
+                          List<SingleOperator> operatorTree, ExecutionEnvironment env, int maxRecords) throws Exception {
         this.dataSources = dataSources;
         this.operatorTree = operatorTree;
         this.env = env;
+        this.maxRecords = maxRecords;
         downStreamPass(this.operatorTree);
 
         setEquivalenceClasses();
         upStreamPass(this.operatorTree);
-
-        System.out.println("Added-------------------");
-        Map addedResult = readExampeTuples();
-        Iterator keyIterator = addedResult.keySet().iterator();
-        while (keyIterator.hasNext()) {
-            Object key = keyIterator.next();
-            System.out.println(key);
-            System.out.println(addedResult.get(key));
-        }
-
+        afterUpstreampass(this.operatorTree);
         //System.out.println(this.lineageGroup);
     }
 
@@ -82,8 +75,10 @@ public class TupleGenerator {
 
                 List inputList = new ArrayList();
                 Random randomGenerator = new Random();
-                inputList.add(returnRandomTuple(operator.getParentOperators().get(0).getOperatorOutputAsList(), randomGenerator));
-                inputList.add(returnRandomTuple(operator.getParentOperators().get(0).getOperatorOutputAsList(), randomGenerator));
+                for(int j = 0; j < this.maxRecords; j++) {
+                    inputList.add(returnRandomTuple(operator.getParentOperators().get(0).getOperatorOutputAsList(), randomGenerator));
+                }
+
 
                 List list = ((SingleInputOperator) operator.getOperator()).executeOnCollections(inputList,
                         null, this.env.getConfig());
@@ -96,6 +91,20 @@ public class TupleGenerator {
             if(operator.getOperatorType() != OperatorType.SOURCE && operator.getOperatorType() != OperatorType.LOAD){
                 List output = executeIndividualOperator(operator);
                 System.out.println(operator.getOperatorType());
+                operator.setOperatorOutputAsList(output);
+                for (Object object : output)
+                    System.out.println(object);
+
+            }
+        }
+    }
+    public void afterUpstreampass(List<SingleOperator> operatorTree) throws Exception {
+        for (int i = 0; i < operatorTree.size(); i++) {
+            SingleOperator operator = operatorTree.get(i);
+
+            if(operator.getOperatorType() != OperatorType.SOURCE && operator.getOperatorType() != OperatorType.LOAD){
+                List output = executeIndividualOperator(operator);
+                System.out.println("After upstream------------"+operator.getOperatorType());
                 operator.setOperatorOutputAsList(output);
                 for (Object object : output)
                     System.out.println(object);
