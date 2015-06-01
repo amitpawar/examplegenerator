@@ -26,14 +26,14 @@ public class TupleGenerator {
     private List<InputDataSource> dataSources;
     private List<SingleOperator> operatorTree;
     private Set lineageGroup = new HashSet();
-    private Map<String, SingleOperator> opTypeShortNameToOperator = new HashMap<String, SingleOperator>();
     private ExecutionEnvironment env;
     private List<DataSet> lineageAdds = new ArrayList<DataSet>();
-    private Map<String, DataSet> unUsedExamplesToSourceMap = new HashMap<String, DataSet>();
     private final String downstreamOutputPath = "/home/amit/thesis/output3/TEST/downStream";
     private Map<SingleOperator, Tuple> operatorToConstraintRecordMap = new HashMap<SingleOperator, Tuple>();
     private Object joinKey = null;
     private int maxRecords = -1;
+    private Map<Integer,SingleOperator> operatorOrderMap = new HashMap<Integer, SingleOperator>();
+    private int orderCounter = 0;
 
     public List<DataSet> getLineageAdds() {
         return lineageAdds;
@@ -53,7 +53,7 @@ public class TupleGenerator {
         setEquivalenceClasses();
         upStreamPass(this.operatorTree);
         afterUpstreampass(this.operatorTree);
-
+        getRecordLineage();
         //System.out.println(this.lineageGroup);
     }
 
@@ -85,6 +85,7 @@ public class TupleGenerator {
                         null, this.env.getConfig());
                 operator.setOperatorOutputAsList(list);
                 System.out.println("LOAD " + operator.getOperatorName());
+                this.operatorOrderMap.put(this.orderCounter++,operator);
                 for (Object object : list)
                     System.out.println(object);
             }
@@ -93,6 +94,7 @@ public class TupleGenerator {
                 List output = executeIndividualOperator(operator);
                 System.out.println(operator.getOperatorType());
                 operator.setOperatorOutputAsList(output);
+                this.operatorOrderMap.put(this.orderCounter++,operator);
                 for (Object object : output)
                     System.out.println(object);
 
@@ -409,8 +411,58 @@ public class TupleGenerator {
             }
         }
         return valueSetTuple;
+    }
 
+    public void getRecordLineage() {
+        List<LinkedList> lineages = new ArrayList<LinkedList>();
+        Set keySet = this.operatorOrderMap.keySet();
+        List<Integer> keyListToIterate = new ArrayList<Integer>();
+        keyListToIterate.addAll(keySet);
+        Collections.sort(keyListToIterate, Collections.reverseOrder()); //start from root move upstream to leaf
 
+        //for (int id : keyListToIterate) {
+            int id = keyListToIterate.get(0); //get the last root record id
+            SingleOperator operator = this.operatorOrderMap.get(id);
+
+            for (Object example : operator.getOperatorOutputAsList()) {
+                LinkedList lineageGroup = new LinkedList();
+                lineageGroup.add(example);
+                constructLineageChain(example, lineageGroup, keyListToIterate, id);
+                lineages.add(lineageGroup);
+            }
+       // }
+        System.out.println("Lineages------");
+        for(LinkedList singleList : lineages)
+            System.out.println(singleList);
+    }
+
+    public LinkedList constructLineageChain(Object currentExample, LinkedList listWithLoadExample,
+                                            List<Integer> opOrder, int currentId){
+
+        for(int prevId : opOrder){
+            if(prevId < currentId){
+                SingleOperator previousOperator = this.operatorOrderMap.get(prevId);
+                List outputOfPreviousOperator = previousOperator.getOperatorOutputAsList();
+                for(Object example : outputOfPreviousOperator){
+                    Tuple currentTuple = (Tuple) currentExample;
+                    Tuple exampleTuple = (Tuple) example;
+                    for(int i = 0;i < exampleTuple.getArity();i++) {
+                        for(int j = 0; j < currentTuple.getArity();j++) {
+
+                            if (exampleTuple.getField(i).equals(currentTuple.getField(j))) {
+                                listWithLoadExample.addFirst(example);
+                            }
+                        }
+                    }
+                    for(int  k = 0; k < currentTuple.getArity();k++){
+                        if(exampleTuple.equals(currentTuple.getField(k))){
+                            listWithLoadExample.addFirst(example);
+                        }
+                    }
+                }
+            }
+        }
+        return listWithLoadExample;
     }
 
 
