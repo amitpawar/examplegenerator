@@ -144,9 +144,11 @@ public class TupleGenerator {
                         //if (!eqClass.hasExample()) {
                         JUCCondition joinCondition = operator.getJUCCondition();
 
+                        //if eqclass is empty, add constraint record to parents such that it fills eqclass
                         String[] firstTokens = constructJoinConstraintTokens(joinCondition, operator.getParentOperators().get(0).getOperatorOutputType().getTotalFields(), 0);
                         Tuple parent1Tuple = getConstraintRecord(operator.getParentOperators().get(0),
                                 new LinkedList<String>(Arrays.asList(firstTokens)));
+                        //added the constraint record to parent with junk data (JOINKEY, DONTCARE)
                         operator.getParentOperators().get(0).getOperatorOutputAsList().add(parent1Tuple);
                         operator.getParentOperators().get(0).setConstraintRecords(parent1Tuple);
                         this.operatorToConstraintRecordMap.put(operator.getParentOperators().get(0), parent1Tuple);
@@ -181,7 +183,7 @@ public class TupleGenerator {
         return tokens;
     }
 
-    public void convertConstraintRecordToConcreteRecord(SingleOperator child, SingleOperator operatorWithEmptyEqClass) throws Exception {
+    public void convertConstraintRecordToConcreteRecord(SingleOperator child,Tuple constraintRecord, SingleOperator operatorWithEmptyEqClass) throws Exception {
         //child = leaf , parent = basetable
         Map<SingleOperator, List> loadOperatorWithUnUsedExamples = new LinkedHashMap<SingleOperator, List>();
         SingleOperator parent = child.getParentOperators().get(0);
@@ -190,7 +192,7 @@ public class TupleGenerator {
             System.out.println("UNUSED-----");
             List unUsedExamplesAtLeaf = getUnusedExamplesFromBaseTable(parent, child, child.getOperatorOutputAsList());
             loadOperatorWithUnUsedExamples.put(child, unUsedExamplesAtLeaf);
-            Tuple constraintRecord = child.getConstraintRecords();
+            //Tuple constraintRecord = child.getConstraintRecords();
             for (int i = 0; i < constraintRecord.getArity(); i++) {
                 if (constraintRecord.getField(i) == "JOINKEY") {
                     Random random = new Random();
@@ -225,6 +227,7 @@ public class TupleGenerator {
 
     }
 
+    //child operator is parent of operator with empty eq class
     public void propagateConstraintRecordUpstream(SingleOperator childOperator, Tuple constraintRecord, SingleOperator operatorWithEmptyEqClass) throws Exception {
         for (SingleOperator parent : childOperator.getParentOperators()) {
             if (childOperator.getOperatorType() != OperatorType.LOAD) {
@@ -238,7 +241,7 @@ public class TupleGenerator {
                 parent.setConstraintRecords(constraintRecord);
                 this.operatorToConstraintRecordMap.put(parent, constraintRecord);
                 //parent is LOAD, once load is reached change to concrete
-                convertConstraintRecordToConcreteRecord(parent, operatorWithEmptyEqClass);
+                convertConstraintRecordToConcreteRecord(parent,constraintRecord, operatorWithEmptyEqClass);
             }
         }
     }
@@ -313,7 +316,7 @@ public class TupleGenerator {
     }
 
 
-    //Todo : check for all types
+    //Todo : check for all types (float,string...)
     public Tuple drillToBasicType(TypeInformation typeInformation, List tokens) throws IllegalAccessException, InstantiationException {
         Tuple testTuple = (Tuple) typeInformation.getTypeClass().newInstance();
 
