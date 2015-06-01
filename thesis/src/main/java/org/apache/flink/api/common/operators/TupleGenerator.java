@@ -14,6 +14,7 @@ import org.apache.flink.core.fs.FileSystem.WriteMode;
 import thesis.algorithm.semantics.EquivalenceClass;
 import thesis.algorithm.semantics.JoinEquivalenceClasses;
 import thesis.algorithm.semantics.LoadEquivalenceClasses;
+import thesis.algorithm.semantics.UnionCrossEquivalenceClasses;
 import thesis.examples.Config;
 import thesis.input.datasources.InputDataSource;
 import thesis.input.operatortree.SingleOperator;
@@ -49,10 +50,10 @@ public class TupleGenerator {
         this.env = env;
         this.maxRecords = maxRecords;
         downStreamPass(this.operatorTree);
-
         setEquivalenceClasses();
         upStreamPass(this.operatorTree);
         afterUpstreampass(this.operatorTree);
+
         //System.out.println(this.lineageGroup);
     }
 
@@ -75,7 +76,7 @@ public class TupleGenerator {
 
                 List inputList = new ArrayList();
                 Random randomGenerator = new Random();
-                for(int j = 0; j < this.maxRecords; j++) {
+                for (int j = 0; j < this.maxRecords; j++) {
                     inputList.add(returnRandomTuple(operator.getParentOperators().get(0).getOperatorOutputAsList(), randomGenerator));
                 }
 
@@ -88,7 +89,7 @@ public class TupleGenerator {
                     System.out.println(object);
             }
 
-            if(operator.getOperatorType() != OperatorType.SOURCE && operator.getOperatorType() != OperatorType.LOAD){
+            if (operator.getOperatorType() != OperatorType.SOURCE && operator.getOperatorType() != OperatorType.LOAD) {
                 List output = executeIndividualOperator(operator);
                 System.out.println(operator.getOperatorType());
                 operator.setOperatorOutputAsList(output);
@@ -98,13 +99,14 @@ public class TupleGenerator {
             }
         }
     }
+
     public void afterUpstreampass(List<SingleOperator> operatorTree) throws Exception {
         for (int i = 0; i < operatorTree.size(); i++) {
             SingleOperator operator = operatorTree.get(i);
 
-            if(operator.getOperatorType() != OperatorType.SOURCE && operator.getOperatorType() != OperatorType.LOAD){
+            if (operator.getOperatorType() != OperatorType.SOURCE && operator.getOperatorType() != OperatorType.LOAD) {
                 List output = executeIndividualOperator(operator);
-                System.out.println("After upstream------------"+operator.getOperatorType());
+                System.out.println("After upstream------------" + operator.getOperatorType());
                 operator.setOperatorOutputAsList(output);
                 for (Object object : output)
                     System.out.println(object);
@@ -116,14 +118,14 @@ public class TupleGenerator {
     public List executeIndividualOperator(SingleOperator singleOperator) throws Exception {
         List output = new ArrayList();
         Operator operator = singleOperator.getOperator();
-        if(operator instanceof SingleInputOperator){
+        if (operator instanceof SingleInputOperator) {
             List input1 = singleOperator.getParentOperators().get(0).getOperatorOutputAsList();
-            output = ((SingleInputOperator) operator).executeOnCollections(input1,null,this.env.getConfig());
+            output = ((SingleInputOperator) operator).executeOnCollections(input1, null, this.env.getConfig());
         }
-        if(operator instanceof DualInputOperator){
+        if (operator instanceof DualInputOperator) {
             List input1 = singleOperator.getParentOperators().get(0).getOperatorOutputAsList();
             List input2 = singleOperator.getParentOperators().get(1).getOperatorOutputAsList();
-            output = ((DualInputOperator) operator).executeOnCollections(input1,input2,null,this.env.getConfig());
+            output = ((DualInputOperator) operator).executeOnCollections(input1, input2, null, this.env.getConfig());
         }
         return output;
     }
@@ -138,41 +140,73 @@ public class TupleGenerator {
         for (int ctr = operatorTree.size(); ctr > 0; ctr--) {
             SingleOperator operator = operatorTree.get(ctr - 1);
             //todo logic for not including source
-            if (operator.getEquivalenceClasses() != null && operator.getOperatorType() == OperatorType.JOIN) {
-                for (EquivalenceClass eqClass : operator.getEquivalenceClasses()) {
-                    if (true) {
-                        //if (!eqClass.hasExample()) {
-                        JUCCondition joinCondition = operator.getJUCCondition();
-
-                        //if eqclass is empty, add constraint record to parents such that it fills eqclass
-                        String[] firstTokens = constructJoinConstraintTokens(joinCondition, operator.getParentOperators().get(0).getOperatorOutputType().getTotalFields(), 0);
-                        Tuple parent1Tuple = getConstraintRecord(operator.getParentOperators().get(0),
-                                new LinkedList<String>(Arrays.asList(firstTokens)));
-                        //added the constraint record to parent with junk data (JOINKEY, DONTCARE)
-                        operator.getParentOperators().get(0).getOperatorOutputAsList().add(parent1Tuple);
-                        operator.getParentOperators().get(0).setConstraintRecords(parent1Tuple);
-                        this.operatorToConstraintRecordMap.put(operator.getParentOperators().get(0), parent1Tuple);
-                        propagateConstraintRecordUpstream(operator.getParentOperators().get(0), parent1Tuple, operator);
-
-                        String[] secondTokens = constructJoinConstraintTokens(joinCondition, operator.getParentOperators().get(1).getOperatorOutputType().getTotalFields(), 1);
-                        Tuple parent2Tuple = getConstraintRecord(operator.getParentOperators().get(1),
-                                new LinkedList<String>(Arrays.asList(secondTokens)));
-                        operator.getParentOperators().get(1).getOperatorOutputAsList().add(parent2Tuple);
-                        operator.getParentOperators().get(1).setConstraintRecords(parent2Tuple);
-                        this.operatorToConstraintRecordMap.put(operator.getParentOperators().get(1), parent2Tuple);
-                        propagateConstraintRecordUpstream(operator.getParentOperators().get(1), parent2Tuple, operator);
-                        this.joinKey = null;
-
+            if (operator.getEquivalenceClasses() != null) {
+                if(operator.getOperatorType() == OperatorType.JOIN) {
+                    for (EquivalenceClass equivalenceClass : operator.getEquivalenceClasses()) {
+                        if (!equivalenceClass.hasExample()) {
+                            fillJoinEquivalenceClass(operator);
+                        }
                     }
                 }
-
+                if(operator.getOperatorType() == OperatorType.CROSS || operator.getOperatorType() == OperatorType.UNION){
+                    //cross union will have 2 eq classes, one for each table
+                    for(EquivalenceClass equivalenceClass : operator.getEquivalenceClasses()){
+                        if(!equivalenceClass.hasExample()){
+                            System.out.println(equivalenceClass.getName()+" is empty");
+                            fillUnionCrossEquivalenceClass(operator,equivalenceClass);
+                        }
+                    }
+                }
             }
-
         }
     }
 
-    public String[] constructJoinConstraintTokens(JUCCondition joinCondition, int totalFields, int inputNum) throws IllegalAccessException, InstantiationException {
+    public void fillUnionCrossEquivalenceClass(SingleOperator operator, EquivalenceClass equivalenceClass) throws Exception {
 
+        int parentId = -1;
+        if(equivalenceClass.getName().equalsIgnoreCase("FirstTableExample"))
+            parentId = 0;
+        if(equivalenceClass.getName().equalsIgnoreCase("SecondTableExample"))
+            parentId = 1;
+        String[] tokens = constructUnionCrossConstraintTokens(operator.getParentOperators().get(parentId).getOperatorOutputType());
+        Tuple parent1Tuple = getConstraintRecord(operator.getParentOperators().get(parentId),
+                new LinkedList<String>(Arrays.asList(tokens)));
+        operator.getParentOperators().get(parentId).getOperatorOutputAsList().add(parent1Tuple);
+        operator.getParentOperators().get(parentId).setConstraintRecords(parent1Tuple);
+        this.operatorToConstraintRecordMap.put(operator.getParentOperators().get(parentId), parent1Tuple);
+        propagateConstraintRecordUpstream(operator.getParentOperators().get(parentId), parent1Tuple, operator);
+
+
+    }
+
+    public void fillJoinEquivalenceClass(SingleOperator operator) throws Exception {
+        JUCCondition joinCondition = operator.getJUCCondition();
+
+        //if eqclass is empty, add constraint record to parents such that it fills eqclass
+        String[] firstTokens = constructJoinConstraintTokens(joinCondition, operator.getParentOperators().get(0).getOperatorOutputType(), 0);
+        Tuple parent1Tuple = getConstraintRecord(operator.getParentOperators().get(0),
+                new LinkedList<String>(Arrays.asList(firstTokens)));
+        //added the constraint record to parent with junk data (JOINKEY, DONTCARE)
+        operator.getParentOperators().get(0).getOperatorOutputAsList().add(parent1Tuple);
+        operator.getParentOperators().get(0).setConstraintRecords(parent1Tuple);
+        this.operatorToConstraintRecordMap.put(operator.getParentOperators().get(0), parent1Tuple);
+        propagateConstraintRecordUpstream(operator.getParentOperators().get(0), parent1Tuple, operator);
+
+        String[] secondTokens = constructJoinConstraintTokens(joinCondition, operator.getParentOperators().get(1).getOperatorOutputType(), 1);
+        Tuple parent2Tuple = getConstraintRecord(operator.getParentOperators().get(1),
+                new LinkedList<String>(Arrays.asList(secondTokens)));
+        operator.getParentOperators().get(1).getOperatorOutputAsList().add(parent2Tuple);
+        operator.getParentOperators().get(1).setConstraintRecords(parent2Tuple);
+        this.operatorToConstraintRecordMap.put(operator.getParentOperators().get(1), parent2Tuple);
+        propagateConstraintRecordUpstream(operator.getParentOperators().get(1), parent2Tuple, operator);
+        this.joinKey = null;
+    }
+
+    //todo : more than one key columns ? tuple as a key column ?
+    public String[] constructJoinConstraintTokens(JUCCondition joinCondition, TypeInformation typeInformation, int inputNum) throws IllegalAccessException, InstantiationException {
+
+        int totalFields = typeInformation.getTotalFields();
+        int arity = typeInformation.getArity();
         int keyColumn = (inputNum == 0) ? joinCondition.getFirstInputKeyColumns()[0] : joinCondition.getSecondInputKeyColumns()[0];
         String[] tokens = new String[totalFields];
         for (int i = 0; i < totalFields; i++) {
@@ -184,7 +218,16 @@ public class TupleGenerator {
         return tokens;
     }
 
-    public void convertConstraintRecordToConcreteRecord(SingleOperator child,Tuple constraintRecord, SingleOperator operatorWithEmptyEqClass) throws Exception {
+    public String[] constructUnionCrossConstraintTokens(TypeInformation typeInformation){
+        int totalFields = typeInformation.getTotalFields();
+        String[] tokens = new String[totalFields];
+        for (int i = 0; i < totalFields; i++) {
+            tokens[i] = "DONTCARE";
+        }
+        return tokens;
+    }
+
+    public void convertConstraintRecordToConcreteRecord(SingleOperator child, Tuple constraintRecord, SingleOperator operatorWithEmptyEqClass) throws Exception {
         //child = leaf , parent = basetable
         Map<SingleOperator, List> loadOperatorWithUnUsedExamples = new LinkedHashMap<SingleOperator, List>();
         SingleOperator parent = child.getParentOperators().get(0);
@@ -211,7 +254,7 @@ public class TupleGenerator {
 
             }
             System.out.println("-------------------Changed Constraint Record-----------" + constraintRecord);
-           // child.getOperatorOutputAsList().add(constraintRecord);
+            // child.getOperatorOutputAsList().add(constraintRecord);
         }
     }
 
@@ -233,7 +276,7 @@ public class TupleGenerator {
         for (SingleOperator parent : childOperator.getParentOperators()) {
             if (childOperator.getOperatorType() != OperatorType.LOAD) {
                 while (parent.getOperatorType() != OperatorType.LOAD) {
-                    parent = parent.getParentOperators().get(0);
+                    parent = parent.getParentOperators().get(0); //todo what if parent is dualinputoperator
                     parent.getOperatorOutputAsList().add(constraintRecord);
                     parent.setConstraintRecords(constraintRecord);
                     this.operatorToConstraintRecordMap.put(parent, constraintRecord);
@@ -242,7 +285,7 @@ public class TupleGenerator {
                 parent.setConstraintRecords(constraintRecord);
                 this.operatorToConstraintRecordMap.put(parent, constraintRecord);
                 //parent is LOAD, once load is reached change to concrete
-                convertConstraintRecordToConcreteRecord(parent,constraintRecord, operatorWithEmptyEqClass);
+                convertConstraintRecordToConcreteRecord(parent, constraintRecord, operatorWithEmptyEqClass);
             }
         }
     }
@@ -274,22 +317,47 @@ public class TupleGenerator {
 
                 List<EquivalenceClass> equivalenceClasses = new ArrayList<EquivalenceClass>();
                 equivalenceClasses.add(loadEquivalenceClass.getLoadExample());
+                loadEquivalenceClass.setLoadExample(loadEquivalenceClass.getLoadExample());
                 operator.setEquivalenceClasses(equivalenceClasses);
             }
 
             if (operator.getOperatorType() == OperatorType.JOIN) {
                 List joinExamples = operator.getOperatorOutputAsList();
                 JoinEquivalenceClasses joinEquivalenceClass = new JoinEquivalenceClasses();
-                if (!joinExamples.isEmpty()) {
+                if (!joinExamples.isEmpty())
                     joinEquivalenceClass.getJoinedExample().setHasExample(true);
-                } else
+                else
                     joinEquivalenceClass.getJoinedExample().setHasExample(false);
 
 
                 List<EquivalenceClass> equivalenceClasses = new ArrayList<EquivalenceClass>();
                 equivalenceClasses.add(joinEquivalenceClass.getJoinedExample());
+                joinEquivalenceClass.setJoinedExample(joinEquivalenceClass.getJoinedExample());
                 operator.setEquivalenceClasses(equivalenceClasses);
 
+            }
+
+            if (operator.getOperatorType() == OperatorType.UNION || operator.getOperatorType() == OperatorType.CROSS){
+                List firstParentExamples = operator.getParentOperators().get(0).getOperatorOutputAsList();
+                List secondParentExamples = operator.getParentOperators().get(1).getOperatorOutputAsList();
+                UnionCrossEquivalenceClasses unionCrossEquivalenceClasses = new UnionCrossEquivalenceClasses();
+
+                if(!firstParentExamples.isEmpty())
+                    unionCrossEquivalenceClasses.getFirstTableExample().setHasExample(true);
+                else
+                    unionCrossEquivalenceClasses.getFirstTableExample().setHasExample(false);
+
+                if(!secondParentExamples.isEmpty())
+                    unionCrossEquivalenceClasses.getSecondTableExample().setHasExample(true);
+                else
+                    unionCrossEquivalenceClasses.getSecondTableExample().setHasExample(false);
+
+                List<EquivalenceClass> equivalenceClasses = new ArrayList<EquivalenceClass>();
+                equivalenceClasses.add(unionCrossEquivalenceClasses.getFirstTableExample());
+                equivalenceClasses.add(unionCrossEquivalenceClasses.getSecondTableExample());
+                unionCrossEquivalenceClasses.setFirstTableExample(unionCrossEquivalenceClasses.getFirstTableExample());
+                unionCrossEquivalenceClasses.setSecondTableExample(unionCrossEquivalenceClasses.getSecondTableExample());
+                operator.setEquivalenceClasses(equivalenceClasses);
             }
         }
     }
@@ -319,28 +387,28 @@ public class TupleGenerator {
 
     //Todo : check for all types (float,string...)
     public Tuple drillToBasicType(TypeInformation typeInformation, List tokens) throws IllegalAccessException, InstantiationException {
-        Tuple testTuple = (Tuple) typeInformation.getTypeClass().newInstance();
+        Tuple valueSetTuple = (Tuple) typeInformation.getTypeClass().newInstance();
 
         for (int ctr = 0; ctr < typeInformation.getArity(); ctr++) {
 
             if (((CompositeType) typeInformation).getTypeAt(ctr).isTupleType())
-                testTuple.setField(drillToBasicType(((CompositeType) typeInformation).getTypeAt(ctr), tokens), ctr);
+                valueSetTuple.setField(drillToBasicType(((CompositeType) typeInformation).getTypeAt(ctr), tokens), ctr);
 
             else {
                 String name = ((CompositeType) typeInformation).getTypeAt(ctr).toString();//todo add tuple field from source
 
-                testTuple.setField(tokens.get(0), ctr);
+                valueSetTuple.setField(tokens.get(0), ctr);
                 tokens.remove(tokens.get(0));
                 /*if (name.equalsIgnoreCase("String"))
-                    testTuple.setField(name, ctr);
+                    valueSetTuple.setField(name, ctr);
                 if (name.equalsIgnoreCase("Long")) {
                     long someValue = -9999;
-                    testTuple.setField(someValue, ctr);
+                    valueSetTuple.setField(someValue, ctr);
 
                 }*/
             }
         }
-        return testTuple;
+        return valueSetTuple;
 
 
     }

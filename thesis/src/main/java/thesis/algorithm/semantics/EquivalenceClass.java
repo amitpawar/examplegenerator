@@ -3,7 +3,6 @@ package thesis.algorithm.semantics;
 public class EquivalenceClass {
 	
 	private String name;
-	private int dataSetCount;
 	private boolean hasExample = false;
 	
 	public EquivalenceClass(String className) {
@@ -19,13 +18,6 @@ public class EquivalenceClass {
 	public String getName() {
 		return name;
 	}
-	
-	public int getDataSetCount() {
-		return dataSetCount;
-	}
-	public void setDataSetCount(int dataSetCount) {
-		this.dataSetCount = dataSetCount;
-	}
-	
+
 
 }

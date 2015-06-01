@@ -26,7 +26,8 @@ public class FilterEquivalenceClasses{
 	}
 
 	public FilterEquivalenceClasses() {
-	
+		this.filterPass = new EquivalenceClass("FilterPass");
+		this.filterFail = new EquivalenceClass("FilterFail");
 		this.filterEquivalenceClasses.add(filterPass);
 		this.filterEquivalenceClasses.add(filterFail);
 		
