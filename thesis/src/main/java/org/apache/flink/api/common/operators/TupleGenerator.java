@@ -161,6 +161,7 @@ public class TupleGenerator {
                         operator.getParentOperators().get(1).setConstraintRecords(parent2Tuple);
                         this.operatorToConstraintRecordMap.put(operator.getParentOperators().get(1), parent2Tuple);
                         propagateConstraintRecordUpstream(operator.getParentOperators().get(1), parent2Tuple, operator);
+                        this.joinKey = null;
 
                     }
                 }
@@ -196,7 +197,7 @@ public class TupleGenerator {
             for (int i = 0; i < constraintRecord.getArity(); i++) {
                 if (constraintRecord.getField(i) == "JOINKEY") {
                     Random random = new Random();
-                    //todo in case of multiple joins
+                    //todo recheck with multi joins
                     if (this.joinKey == null)
                         this.joinKey = ((Tuple) returnRandomTuple(unUsedExamplesAtLeaf, random)).getField(i);
                     constraintRecord.setField(this.joinKey, i);
