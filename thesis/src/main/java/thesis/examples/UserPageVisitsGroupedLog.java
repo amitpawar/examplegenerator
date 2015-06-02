@@ -69,7 +69,7 @@ public class UserPageVisitsGroupedLog {
 
 		public boolean filter(Tuple3<String, String, Integer> groupedSet)
 				throws Exception {
-			return groupedSet.f2 > 3;
+			return groupedSet.f2 > 1;
 		}
 		
 	}

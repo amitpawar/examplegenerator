@@ -39,14 +39,48 @@ public class TupleGenerator {
         this.operatorTree = operatorTree;
         this.env = env;
         this.maxRecords = maxRecords;
-        downStreamPass(this.operatorTree);
-        setEquivalenceClasses();
-        upStreamPass(this.operatorTree);
-        afterUpstreampass(this.operatorTree);
-        getRecordLineage();
+        downStreamTest(this.operatorTree);
+        // setEquivalenceClasses();
+       // upStreamPass(this.operatorTree);
+       // afterUpstreampass(this.operatorTree);
+       // getRecordLineage();
         //System.out.println(this.lineageGroup);
     }
 
+
+    public void downStreamTest(List<SingleOperator> operatorTree) throws Exception {
+        for(int i = 0; i < operatorTree.size();i++){
+
+            SingleOperator operator = operatorTree.get(i);
+
+            if (operator.getOperatorType() == OperatorType.SOURCE) {
+
+                List list = ((GenericDataSourceBase) operator.getOperator()).executeOnCollections(this.env.getConfig());
+                operator.setOperatorOutputAsList(list);
+
+            }
+        }
+        for(int j = 0; j < this.maxRecords; j++){
+            for(int k = 0; k < operatorTree.size(); k++) {
+                SingleOperator operator = operatorTree.get(k);
+                if(operator.getOperatorType() != OperatorType.SOURCE) {
+
+                        executeOperatorPerRecord(operator);
+
+                }
+            }
+        }
+        displayExamples(operatorTree);
+
+    }
+
+    public void displayExamples(List<SingleOperator> operatorTree){
+        for(SingleOperator operator : operatorTree){
+            System.out.println(operator.getOperatorType() +" "+operator.getOperatorName());
+            for(Object object : operator.getOperatorOutputAsList())
+                System.out.println(object);
+        }
+    }
 
     public void downStreamPass(List<SingleOperator> operatorTree) throws Exception {
         for (int i = 0; i < operatorTree.size(); i++) {
@@ -87,6 +121,38 @@ public class TupleGenerator {
                 this.operatorOrderMap.put(this.orderCounter++,operator);
                 for (Object object : output)
                     System.out.println(object);
+
+            }
+        }
+    }
+
+
+    public void executeOperatorPerRecord(SingleOperator operator) throws Exception {
+
+        if (operator.getOperatorType() != OperatorType.SOURCE) {
+            if(operator.getOperatorType() == OperatorType.LOAD)
+            {
+
+                List inputList = new ArrayList();
+                Random randomGenerator = new Random();
+                inputList.add(returnRandomTuple(operator.getParentOperators().get(0).getOperatorOutputAsList(), randomGenerator));
+                List output = ((SingleInputOperator) operator.getOperator()).executeOnCollections(inputList, null, this.env.getConfig());
+
+                if(operator.getOperatorOutputAsList() != null)
+                    operator.getOperatorOutputAsList().addAll(output);
+                else
+                    operator.setOperatorOutputAsList(output);
+                this.operatorOrderMap.put(this.orderCounter++, operator);
+
+            }
+            else {
+                List output = executeIndividualOperator(operator);
+
+                if(operator.getOperatorOutputAsList() != null)
+                    operator.getOperatorOutputAsList().addAll(output);
+                else
+                    operator.setOperatorOutputAsList(output);
+                this.operatorOrderMap.put(this.orderCounter++, operator);
 
             }
         }
@@ -417,7 +483,7 @@ public class TupleGenerator {
             for (Object example : operator.getOperatorOutputAsList()) {
                 LinkedList lineageGroup = new LinkedList();
                 lineageGroup.add(example);
-                constructLineageChainUsingTuples(example, lineageGroup, keyListToIterate, id);
+                constructLineageChainUsingString(example, lineageGroup, keyListToIterate, id);
                 lineages.add(lineageGroup);
             }
        // }
