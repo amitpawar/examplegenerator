@@ -25,23 +25,13 @@ public class TupleGenerator {
 
     private List<InputDataSource> dataSources;
     private List<SingleOperator> operatorTree;
-    private Set lineageGroup = new HashSet();
     private ExecutionEnvironment env;
-    private List<DataSet> lineageAdds = new ArrayList<DataSet>();
-    private final String downstreamOutputPath = "/home/amit/thesis/output3/TEST/downStream";
     private Map<SingleOperator, Tuple> operatorToConstraintRecordMap = new HashMap<SingleOperator, Tuple>();
     private Object joinKey = null;
     private int maxRecords = -1;
     private Map<Integer,SingleOperator> operatorOrderMap = new HashMap<Integer, SingleOperator>();
     private int orderCounter = 0;
 
-    public List<DataSet> getLineageAdds() {
-        return lineageAdds;
-    }
-
-    public void setLineageAdds(List<DataSet> lineageAdds) {
-        this.lineageAdds = lineageAdds;
-    }
 
     public TupleGenerator(List<InputDataSource> dataSources,
                           List<SingleOperator> operatorTree, ExecutionEnvironment env, int maxRecords) throws Exception {
