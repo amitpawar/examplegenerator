@@ -434,9 +434,9 @@ public class TupleGenerator {
                 SingleOperator previousOperator = this.operatorOrderMap.get(prevId);
                 List outputOfPreviousOperator = previousOperator.getOperatorOutputAsList();
                 for(Object example : outputOfPreviousOperator){
-                    Tuple currentTuple = (Tuple) currentExample;
+//                    Tuple currentTuple = (Tuple) currentExample;
                     String currentExampleString = currentExample.toString().replaceAll("[\\(\\)]", "");;
-                    Tuple exampleTuple = (Tuple) example;
+//                    Tuple exampleTuple = (Tuple) example;
                     String exampleTupleString = example.toString().replaceAll("[\\(\\)]","");
                     if(exampleTupleString.contains(currentExampleString)){
                         listWithLoadExample.addFirst(example);
