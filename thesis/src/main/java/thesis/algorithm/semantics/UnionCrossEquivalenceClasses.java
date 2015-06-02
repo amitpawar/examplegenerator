@@ -1,10 +1,11 @@
 package thesis.algorithm.semantics;
 
+import java.util.ArrayList;
 import java.util.List;
 
 public class UnionCrossEquivalenceClasses {
 	
-	private List<EquivalenceClass> unionEquivalenceClasses;
+	private List<EquivalenceClass> unionEquivalenceClasses = new ArrayList<EquivalenceClass>();
 	EquivalenceClass firstTableExample;
 	public EquivalenceClass getFirstTableExample() {
 		return firstTableExample;

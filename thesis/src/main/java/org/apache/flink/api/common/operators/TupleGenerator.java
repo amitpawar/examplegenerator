@@ -445,20 +445,27 @@ public class TupleGenerator {
                 List outputOfPreviousOperator = previousOperator.getOperatorOutputAsList();
                 for(Object example : outputOfPreviousOperator){
                     Tuple currentTuple = (Tuple) currentExample;
+                    String currentExampleString = currentExample.toString().replaceAll("[\\(\\)]", "");;
                     Tuple exampleTuple = (Tuple) example;
-                    for(int i = 0;i < exampleTuple.getArity();i++) {
+                    String exampleTupleString = example.toString().replaceAll("[\\(\\)]","");
+                    if(exampleTupleString.contains(currentExampleString)){
+                        listWithLoadExample.addFirst(example);
+                    }
+                   /* for(int i = 0;i < exampleTuple.getArity();i++) {
                         for(int j = 0; j < currentTuple.getArity();j++) {
 
                             if (exampleTuple.getField(i).equals(currentTuple.getField(j))) {
                                 listWithLoadExample.addFirst(example);
                             }
+
                         }
                     }
-                    for(int  k = 0; k < currentTuple.getArity();k++){
+                     for(int  k = 0; k < currentTuple.getArity();k++){
                         if(exampleTuple.equals(currentTuple.getField(k))){
                             listWithLoadExample.addFirst(example);
                         }
-                    }
+                    }*/
+
                 }
             }
         }

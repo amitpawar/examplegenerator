@@ -9,7 +9,7 @@ import org.apache.flink.api.java.operators.DataSource;
 import org.apache.flink.api.java.tuple.Tuple3;
 import org.apache.flink.core.fs.FileSystem.WriteMode;
 
-import thesis.algorithm.logic.TupleGenerator;
+import org.apache.flink.api.common.operators.TupleGenerator;
 import thesis.examples.UserPageVisitsGroupedLog.GroupCounter;
 import thesis.examples.UserPageVisitsGroupedLog.HighVisitsFilter;
 import thesis.examples.UserPageVisitsGroupedLog.VisitsReaderWithCount;
@@ -23,7 +23,7 @@ public class DifferentUsersUnifiedLog {
 		List<InputDataSource> inputSources = new ArrayList<InputDataSource>();
 	
 		ExecutionEnvironment env = ExecutionEnvironment
-				.getExecutionEnvironment();
+				.createCollectionsEnvironment();
 
 		DataSource<String> visits = env.readTextFile(Config.pathToVisits());
 		DataSource<String> visitsEU = env.readTextFile(Config.pathToVisitsEU());
@@ -51,8 +51,8 @@ public class DifferentUsersUnifiedLog {
 		groupedFilteredSet.writeAsCsv(Config.outputPath()+"/"+DifferentUsersUnifiedLog.class.getName(),WriteMode.OVERWRITE);
 
 		OperatorTree tree = new OperatorTree(env, inputSources);
-		tree.createOperatorTree();
-		//TupleGenerator tg = new TupleGenerator(inputSources, tree.createOperatorTree(), env);
+		//tree.createOperatorTree();
+		TupleGenerator tg = new TupleGenerator(inputSources, tree.createOperatorTree(), env,2);
 		//env.execute();
 		//OperatorTree tree = new OperatorTree(env);
 		//tree.createOperatorTree();
