@@ -2,7 +2,7 @@ package org.apache.flink.api.common.operators;
 
 import java.util.*;
 
-import org.apache.commons.math3.analysis.function.Sin;
+import com.google.common.collect.Lists;
 import org.apache.flink.api.common.functions.RichFilterFunction;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.api.common.typeutils.CompositeType;
@@ -28,6 +28,7 @@ public class TupleGenerator {
     private Object joinKey = null;
     private int maxRecords = -1;
     private Map<Integer,SingleOperator> operatorOrderMap = new HashMap<Integer, SingleOperator>();
+    private Map<Object,Map<SingleOperator,Object>> lineageTracker = new HashMap<Object, Map<SingleOperator, Object>>();
     private int orderCounter = 0;
 
 
@@ -37,16 +38,78 @@ public class TupleGenerator {
         this.operatorTree = operatorTree;
         this.env = env;
         this.maxRecords = maxRecords;
-        downStreamPass(this.operatorTree);
+        //downStreamPass(this.operatorTree);
+        downStreamTest(this.operatorTree);
         setEquivalenceClasses();
         upStreamPass(this.operatorTree);
         afterUpstreampass(this.operatorTree);
-        pruneTuples();
-       // getRecordLineage();
+        setEquivalenceClasses();
+        /*pruneTuples();*/
+        //downStreamTest(this.operatorTree);
+        // getRecordLineage();
         //System.out.println(this.lineageGroup);
     }
 
+    public void downStreamTest(List<SingleOperator> operatorTree) throws Exception {
+        for(int i = 0; i < operatorTree.size();i++){
 
+            SingleOperator operator = operatorTree.get(i);
+
+            if (operator.getOperatorType() == OperatorType.SOURCE) {
+
+                List list = ((GenericDataSourceBase) operator.getOperator()).executeOnCollections(this.env.getConfig());
+                operator.setOperatorOutputAsList(list);
+
+            }
+        }
+        for(int j = 0; j < this.maxRecords; j++){
+            for(int k = 0; k < operatorTree.size(); k++) {
+                SingleOperator operator = operatorTree.get(k);
+                if(operator.getOperatorType() != OperatorType.SOURCE) {
+
+                    executeOperatorPerRecord(operator);
+
+                }
+            }
+        }
+        displayExamples(operatorTree);
+
+    }
+
+    public void executeOperatorPerRecord(SingleOperator operator) throws Exception {
+
+        if (operator.getOperatorType() != OperatorType.SOURCE) {
+            if(operator.getOperatorType() == OperatorType.LOAD)
+            {
+
+                List inputList = new ArrayList();
+                Random randomGenerator = new Random();
+                inputList.add(returnRandomTuple(operator.getParentOperators().get(0).getOperatorOutputAsList(), randomGenerator));
+                List output = ((SingleInputOperator) operator.getOperator()).executeOnCollections(inputList, null, this.env.getConfig());
+
+                if(operator.getOperatorOutputAsList() != null)
+                    operator.getOperatorOutputAsList().addAll(output);
+                else
+                    operator.setOperatorOutputAsList(output);
+                this.operatorOrderMap.put(this.orderCounter++, operator);
+
+            }
+            else {
+                List output = executeIndividualOperator(operator);
+
+                if(operator.getOperatorOutputAsList() != null){
+                    operator.getOperatorOutputAsList().clear();
+                    operator.getOperatorOutputAsList().addAll(output);
+                }
+
+                else
+                    operator.setOperatorOutputAsList(output);
+                this.operatorOrderMap.put(this.orderCounter++, operator);
+
+            }
+
+        }
+    }
     public void displayExamples(List<SingleOperator> operatorTree){
         for(SingleOperator operator : operatorTree){
             System.out.println(operator.getOperatorType() +" "+operator.getOperatorName());
@@ -115,19 +178,42 @@ public class TupleGenerator {
 
             }
         }
+
     }
 
     public List executeIndividualOperator(SingleOperator singleOperator) throws Exception {
-        List output = new ArrayList();
+        List<Object> output = new ArrayList();
         Operator operator = singleOperator.getOperator();
         if (operator instanceof SingleInputOperator) {
-            List input1 = singleOperator.getParentOperators().get(0).getOperatorOutputAsList();
-            output = ((SingleInputOperator) operator).executeOnCollections(input1, null, this.env.getConfig());
+            List<Object> input1 = singleOperator.getParentOperators().get(0).getOperatorOutputAsList();
+
+            for(List<Object> singleExample : Lists.partition(input1,1)){
+
+                List outputExample = ((SingleInputOperator) operator).executeOnCollections(singleExample, null, this.env.getConfig());
+                if(!outputExample.isEmpty()) {
+                    if (singleOperator.getOperatorType() == OperatorType.DISTINCT && !output.contains(outputExample.get(0)))
+                        output.add(outputExample.get(0));
+                    if(singleOperator.getOperatorType() != OperatorType.DISTINCT)
+                        output.add(outputExample.get(0));
+                }
+            }
+            //output = ((SingleInputOperator) operator).executeOnCollections(input1, null, this.env.getConfig());
         }
         if (operator instanceof DualInputOperator) {
-            List input1 = singleOperator.getParentOperators().get(0).getOperatorOutputAsList();
-            List input2 = singleOperator.getParentOperators().get(1).getOperatorOutputAsList();
-            output = ((DualInputOperator) operator).executeOnCollections(input1, input2, null, this.env.getConfig());
+            List<Object> input1 = singleOperator.getParentOperators().get(0).getOperatorOutputAsList();
+            List<Object> input2 = singleOperator.getParentOperators().get(1).getOperatorOutputAsList();
+
+            for(List<Object> singleExample : Lists.partition(input1,1)){
+                List outputExample = ((DualInputOperator) operator).executeOnCollections(singleExample, input2, null, this.env.getConfig());
+                if(!outputExample.isEmpty() && !output.contains(outputExample.get(0)))
+                    output.add(outputExample.get(0));
+            }
+            for(List<Object> singleExample : Lists.partition(input2,1)){
+                List outputExample = ((DualInputOperator) operator).executeOnCollections(input1, singleExample, null, this.env.getConfig());
+                if(!outputExample.isEmpty() && !output.contains(outputExample.get(0)))
+                    output.add(outputExample.get(0));
+            }
+           // output = ((DualInputOperator) operator).executeOnCollections(input1, input2, null, this.env.getConfig());
         }
         return output;
     }
@@ -293,19 +379,19 @@ public class TupleGenerator {
     }
 
     public void pruneTuples() {
-        for (int ctr = this.operatorTree.size(); ctr > 0; ctr--) {
-            SingleOperator operator = this.operatorTree.get(ctr - 1);
 
-            for(EquivalenceClass equivalenceClass : operator.getEquivalenceClasses()){
-                if(equivalenceClass.hasExample()){
-                    //remove one by one from upstream operators, while removing from upstream operator
-                    //check the equivalence class of that operator is still maintained and not empty
-                    //Object prunedItem = operator.getOperatorOutputAsList().remove(0);
-                    getRecordLineageTest(operator);
+        SingleOperator operator = this.operatorTree.get(this.operatorTree.size() - 1);
 
-                }
+        for (EquivalenceClass equivalenceClass : operator.getEquivalenceClasses()) {
+            if (equivalenceClass.hasExample()) {
+                //remove one by one from upstream operators, while removing from upstream operator
+                //check the equivalence class of that operator is still maintained and not empty
+                //Object prunedItem = operator.getOperatorOutputAsList().remove(0);
+                getRecordLineage(operator);
+
             }
         }
+
     }
 
 
@@ -464,7 +550,7 @@ public class TupleGenerator {
         return valueSetTuple;
     }
 
-    public void getRecordLineage() {
+    public void getRecordLineageTest() {
         List<LinkedList> lineages = new ArrayList<LinkedList>();
         Set keySet = this.operatorOrderMap.keySet();
         List<Integer> keyListToIterate = new ArrayList<Integer>();
@@ -487,37 +573,20 @@ public class TupleGenerator {
             System.out.println(singleList);
     }
 
-    public void getRecordLineageTest(SingleOperator operator){
+    public void getRecordLineage(SingleOperator operator){
         Map<Object,Map<SingleOperator,Object>> recordLineage = new HashMap<Object, Map<SingleOperator, Object>>();
 
         for(Object example : operator.getOperatorOutputAsList()){
+            //todo search by concrete tuple field Java1(Java2(String,Long)) - search String and Long separately
             Map<SingleOperator, Object> lineageTrace = new HashMap<SingleOperator, Object>();
             lineageTrace.put(operator,example);
-            recursiveParentCall(lineageTrace,example,operator);
+            constructLineageChain(lineageTrace,example,operator);
             recordLineage.put(example,lineageTrace);
         }
         System.out.println(recordLineage);
     }
 
-
-
-    public Map<SingleOperator,Object> constructRecordsLineage(Object example, SingleOperator operator){
-        Map<SingleOperator,Object> lineageTrace = new HashMap<SingleOperator, Object>();
-        lineageTrace.put(operator, example);
-        for(SingleOperator parent : operator.getParentOperators()){
-            if(parent.getOperatorType() != OperatorType.SOURCE) {
-                List parentOutput = parent.getOperatorOutputAsList();
-                for (Object parentExample : parentOutput) {
-                    if (parentHasTheRecordExampleTuple(parentExample, example))
-                        lineageTrace.put(parent, parentExample);
-                }
-                recursiveParentCall(lineageTrace, example, parent);
-            }
-        }
-        return lineageTrace;
-    }
-
-    public void recursiveParentCall(Map<SingleOperator,Object> lineageTrace,Object example, SingleOperator parent){
+    public void constructLineageChain(Map<SingleOperator,Object> lineageTrace,Object example, SingleOperator parent){
 
         for (SingleOperator upstreamParent : parent.getParentOperators()) {
             if (upstreamParent.getOperatorType() != OperatorType.SOURCE) {
@@ -526,7 +595,7 @@ public class TupleGenerator {
                     if (parentHasTheRecordExampleTuple(upstreamParentExample, example))
                         lineageTrace.put(upstreamParent, upstreamParentExample);
                 }
-                recursiveParentCall(lineageTrace, example, upstreamParent);
+                constructLineageChain(lineageTrace, example, upstreamParent);
             }
         }
 
