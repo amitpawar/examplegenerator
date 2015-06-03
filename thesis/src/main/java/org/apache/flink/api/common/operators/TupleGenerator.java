@@ -2,20 +2,18 @@ package org.apache.flink.api.common.operators;
 
 import java.util.*;
 
+import org.apache.commons.math3.analysis.function.Sin;
 import org.apache.flink.api.common.functions.RichFilterFunction;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.api.common.typeutils.CompositeType;
-import org.apache.flink.api.java.DataSet;
 import org.apache.flink.api.java.ExecutionEnvironment;
 import org.apache.flink.api.java.tuple.Tuple;
 import org.apache.flink.configuration.Configuration;
-import org.apache.flink.core.fs.FileSystem.WriteMode;
 
 import thesis.algorithm.semantics.EquivalenceClass;
 import thesis.algorithm.semantics.JoinEquivalenceClasses;
-import thesis.algorithm.semantics.LoadEquivalenceClasses;
+import thesis.algorithm.semantics.SingleEquivalenceClass;
 import thesis.algorithm.semantics.UnionCrossEquivalenceClasses;
-import thesis.examples.Config;
 import thesis.input.datasources.InputDataSource;
 import thesis.input.operatortree.SingleOperator;
 import thesis.input.operatortree.OperatorType;
@@ -43,6 +41,7 @@ public class TupleGenerator {
         setEquivalenceClasses();
         upStreamPass(this.operatorTree);
         afterUpstreampass(this.operatorTree);
+        pruneTuples();
        // getRecordLineage();
         //System.out.println(this.lineageGroup);
     }
@@ -298,10 +297,12 @@ public class TupleGenerator {
             SingleOperator operator = this.operatorTree.get(ctr - 1);
 
             for(EquivalenceClass equivalenceClass : operator.getEquivalenceClasses()){
-                if(equivalenceClass.hasExample() && equivalenceClass.getExamples().size() > 1){
+                if(equivalenceClass.hasExample()){
                     //remove one by one from upstream operators, while removing from upstream operator
                     //check the equivalence class of that operator is still maintained and not empty
-                    operator.getOperatorOutputAsList().remove(0);
+                    //Object prunedItem = operator.getOperatorOutputAsList().remove(0);
+                    getRecordLineageTest(operator);
+
                 }
             }
         }
@@ -321,19 +322,53 @@ public class TupleGenerator {
 
             if (operator.getOperatorType() == OperatorType.LOAD) {
                 List loadExamples = operator.getOperatorOutputAsList();
-                LoadEquivalenceClasses loadEquivalenceClass = new LoadEquivalenceClasses();
+                SingleEquivalenceClass loadEquivalenceClass = new SingleEquivalenceClass();
 
                 if (!loadExamples.isEmpty()) {
-                    loadEquivalenceClass.getLoadExample().setHasExample(true);
-                    loadEquivalenceClass.getLoadExample().setExamples(loadExamples);
+                    loadEquivalenceClass.getSingleExample().setHasExample(true);
+                    loadEquivalenceClass.getSingleExample().setExamples(loadExamples);
                 } else
-                    loadEquivalenceClass.getLoadExample().setHasExample(false);
+                    loadEquivalenceClass.getSingleExample().setHasExample(false);
 
                 List<EquivalenceClass> equivalenceClasses = new ArrayList<EquivalenceClass>();
-                equivalenceClasses.add(loadEquivalenceClass.getLoadExample());
-                loadEquivalenceClass.setLoadExample(loadEquivalenceClass.getLoadExample());
+                equivalenceClasses.add(loadEquivalenceClass.getSingleExample());
+                loadEquivalenceClass.setSingleExample(loadEquivalenceClass.getSingleExample());
                 operator.setEquivalenceClasses(equivalenceClasses);
             }
+
+            if(operator.getOperatorType() == OperatorType.DISTINCT){
+                List distinctExamples = operator.getOperatorOutputAsList();
+                SingleEquivalenceClass distinctEquivalenceClass = new SingleEquivalenceClass();
+
+                if (!distinctExamples.isEmpty()) {
+                    distinctEquivalenceClass.getSingleExample().setHasExample(true);
+                    distinctEquivalenceClass.getSingleExample().setExamples(distinctExamples);
+                } else
+                    distinctEquivalenceClass.getSingleExample().setHasExample(false);
+
+                List<EquivalenceClass> equivalenceClasses = new ArrayList<EquivalenceClass>();
+                equivalenceClasses.add(distinctEquivalenceClass.getSingleExample());
+                distinctEquivalenceClass.setSingleExample(distinctEquivalenceClass.getSingleExample());
+                operator.setEquivalenceClasses(equivalenceClasses);
+            }
+
+            if(operator.getOperatorType() == OperatorType.PROJECT){
+                List projectExamples = operator.getOperatorOutputAsList();
+                SingleEquivalenceClass projectEquivalenceClass = new SingleEquivalenceClass();
+
+                if (!projectExamples.isEmpty()) {
+                    projectEquivalenceClass.getSingleExample().setHasExample(true);
+                    projectEquivalenceClass.getSingleExample().setExamples(projectExamples);
+                } else
+                    projectEquivalenceClass.getSingleExample().setHasExample(false);
+
+                List<EquivalenceClass> equivalenceClasses = new ArrayList<EquivalenceClass>();
+                equivalenceClasses.add(projectEquivalenceClass.getSingleExample());
+                projectEquivalenceClass.setSingleExample(projectEquivalenceClass.getSingleExample());
+                operator.setEquivalenceClasses(equivalenceClasses);
+            }
+
+
 
             if (operator.getOperatorType() == OperatorType.JOIN) {
                 List joinExamples = operator.getOperatorOutputAsList();
@@ -450,6 +485,62 @@ public class TupleGenerator {
         System.out.println("Lineages------");
         for(LinkedList singleList : lineages)
             System.out.println(singleList);
+    }
+
+    public void getRecordLineageTest(SingleOperator operator){
+        Map<Object,Map<SingleOperator,Object>> recordLineage = new HashMap<Object, Map<SingleOperator, Object>>();
+
+        for(Object example : operator.getOperatorOutputAsList()){
+            Map<SingleOperator, Object> lineageTrace = new HashMap<SingleOperator, Object>();
+            lineageTrace.put(operator,example);
+            recursiveParentCall(lineageTrace,example,operator);
+            recordLineage.put(example,lineageTrace);
+        }
+        System.out.println(recordLineage);
+    }
+
+
+
+    public Map<SingleOperator,Object> constructRecordsLineage(Object example, SingleOperator operator){
+        Map<SingleOperator,Object> lineageTrace = new HashMap<SingleOperator, Object>();
+        lineageTrace.put(operator, example);
+        for(SingleOperator parent : operator.getParentOperators()){
+            if(parent.getOperatorType() != OperatorType.SOURCE) {
+                List parentOutput = parent.getOperatorOutputAsList();
+                for (Object parentExample : parentOutput) {
+                    if (parentHasTheRecordExampleTuple(parentExample, example))
+                        lineageTrace.put(parent, parentExample);
+                }
+                recursiveParentCall(lineageTrace, example, parent);
+            }
+        }
+        return lineageTrace;
+    }
+
+    public void recursiveParentCall(Map<SingleOperator,Object> lineageTrace,Object example, SingleOperator parent){
+
+        for (SingleOperator upstreamParent : parent.getParentOperators()) {
+            if (upstreamParent.getOperatorType() != OperatorType.SOURCE) {
+                List upstreamParentOutput = upstreamParent.getOperatorOutputAsList();
+                for (Object upstreamParentExample : upstreamParentOutput) {
+                    if (parentHasTheRecordExampleTuple(upstreamParentExample, example))
+                        lineageTrace.put(upstreamParent, upstreamParentExample);
+                }
+                recursiveParentCall(lineageTrace, example, upstreamParent);
+            }
+        }
+
+    }
+
+    //todo check token wise
+    public boolean parentHasTheRecordExampleTuple(Object parentExample, Object example){
+        String parentExampleString = parentExample.toString().replaceAll("[\\(\\)]", "");
+        String exampleTupleString = example.toString().replaceAll("[\\(\\)]", "");
+        if (parentExampleString.contains(exampleTupleString)) {
+            return true;
+        }
+        else
+            return false;
     }
 
     public LinkedList constructLineageChainUsingString(Object currentExample, LinkedList listWithLoadExample,
