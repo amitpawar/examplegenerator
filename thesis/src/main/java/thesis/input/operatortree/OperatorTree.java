@@ -118,18 +118,25 @@ public class OperatorTree {
 		Operator<?> operator = node.getOperator();
 		SingleOperator opToAdd = new SingleOperator();
 
-		
-		if(operator instanceof FlatMapOperatorBase){
-			//System.out.println("Testststs"+((FlatMapOperatorBase) operator).getInput().getClass());
-			if(((FlatMapOperatorBase) operator).getInput() instanceof GenericDataSourceBase){
-			
-				if(!isVisited(operator)){
-					opToAdd.setOperatorType(OperatorType.LOAD);
-					addOperatorDetails(opToAdd, operator);
-				}
-			}
-		}
-		
+
+       /* if (operator instanceof FlatMapOperatorBase) {
+            //System.out.println("Testststs"+((FlatMapOperatorBase) operator).getInput().getClass());
+             if (!isVisited(operator)) {
+                opToAdd.setOperatorType(OperatorType.FLATMAP);
+                addOperatorDetails(opToAdd, operator);
+            }
+        }*/
+
+        if(operator instanceof SingleInputOperator) {
+
+            if (((SingleInputOperator) operator).getInput() instanceof GenericDataSourceBase) {
+                if (!isVisited(operator)) {
+                    opToAdd.setOperatorType(OperatorType.LOAD);
+                    addOperatorDetails(opToAdd, operator);
+                }
+            }
+        }
+
 		if (operator instanceof JoinOperatorBase) {
 			if (!isVisited(operator)) {
 				opToAdd.setOperatorType(OperatorType.JOIN);

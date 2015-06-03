@@ -10,5 +10,6 @@ public enum OperatorType {
 	UNION,
 	SOURCE,
 	GROUPREDUCE,
-	REDUCE
+	REDUCE,
+	FLATMAP
 }

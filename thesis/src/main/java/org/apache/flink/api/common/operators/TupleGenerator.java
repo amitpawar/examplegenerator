@@ -39,40 +39,14 @@ public class TupleGenerator {
         this.operatorTree = operatorTree;
         this.env = env;
         this.maxRecords = maxRecords;
-        downStreamTest(this.operatorTree);
-        // setEquivalenceClasses();
-       // upStreamPass(this.operatorTree);
-       // afterUpstreampass(this.operatorTree);
+        downStreamPass(this.operatorTree);
+        setEquivalenceClasses();
+        upStreamPass(this.operatorTree);
+        afterUpstreampass(this.operatorTree);
        // getRecordLineage();
         //System.out.println(this.lineageGroup);
     }
 
-
-    public void downStreamTest(List<SingleOperator> operatorTree) throws Exception {
-        for(int i = 0; i < operatorTree.size();i++){
-
-            SingleOperator operator = operatorTree.get(i);
-
-            if (operator.getOperatorType() == OperatorType.SOURCE) {
-
-                List list = ((GenericDataSourceBase) operator.getOperator()).executeOnCollections(this.env.getConfig());
-                operator.setOperatorOutputAsList(list);
-
-            }
-        }
-        for(int j = 0; j < this.maxRecords; j++){
-            for(int k = 0; k < operatorTree.size(); k++) {
-                SingleOperator operator = operatorTree.get(k);
-                if(operator.getOperatorType() != OperatorType.SOURCE) {
-
-                        executeOperatorPerRecord(operator);
-
-                }
-            }
-        }
-        displayExamples(operatorTree);
-
-    }
 
     public void displayExamples(List<SingleOperator> operatorTree){
         for(SingleOperator operator : operatorTree){
@@ -127,36 +101,7 @@ public class TupleGenerator {
     }
 
 
-    public void executeOperatorPerRecord(SingleOperator operator) throws Exception {
 
-        if (operator.getOperatorType() != OperatorType.SOURCE) {
-            if(operator.getOperatorType() == OperatorType.LOAD)
-            {
-
-                List inputList = new ArrayList();
-                Random randomGenerator = new Random();
-                inputList.add(returnRandomTuple(operator.getParentOperators().get(0).getOperatorOutputAsList(), randomGenerator));
-                List output = ((SingleInputOperator) operator.getOperator()).executeOnCollections(inputList, null, this.env.getConfig());
-
-                if(operator.getOperatorOutputAsList() != null)
-                    operator.getOperatorOutputAsList().addAll(output);
-                else
-                    operator.setOperatorOutputAsList(output);
-                this.operatorOrderMap.put(this.orderCounter++, operator);
-
-            }
-            else {
-                List output = executeIndividualOperator(operator);
-
-                if(operator.getOperatorOutputAsList() != null)
-                    operator.getOperatorOutputAsList().addAll(output);
-                else
-                    operator.setOperatorOutputAsList(output);
-                this.operatorOrderMap.put(this.orderCounter++, operator);
-
-            }
-        }
-    }
 
     public void afterUpstreampass(List<SingleOperator> operatorTree) throws Exception {
         for (int i = 0; i < operatorTree.size(); i++) {
@@ -227,12 +172,12 @@ public class TupleGenerator {
         if(equivalenceClass.getName().equalsIgnoreCase("SecondTableExample"))
             parentId = 1;
         String[] tokens = constructUnionCrossConstraintTokens(operator.getParentOperators().get(parentId).getOperatorOutputType());
-        Tuple parent1Tuple = getConstraintRecord(operator.getParentOperators().get(parentId),
+        Tuple parentTuple = getConstraintRecord(operator.getParentOperators().get(parentId),
                 new LinkedList<String>(Arrays.asList(tokens)));
-        operator.getParentOperators().get(parentId).getOperatorOutputAsList().add(parent1Tuple);
-        operator.getParentOperators().get(parentId).setConstraintRecords(parent1Tuple);
-        this.operatorToConstraintRecordMap.put(operator.getParentOperators().get(parentId), parent1Tuple);
-        propagateConstraintRecordUpstream(operator.getParentOperators().get(parentId), parent1Tuple, operator);
+        operator.getParentOperators().get(parentId).getOperatorOutputAsList().add(parentTuple);
+        operator.getParentOperators().get(parentId).setConstraintRecords(parentTuple);
+        this.operatorToConstraintRecordMap.put(operator.getParentOperators().get(parentId), parentTuple);
+        propagateConstraintRecordUpstream(operator.getParentOperators().get(parentId), parentTuple, operator);
 
 
     }
@@ -349,7 +294,15 @@ public class TupleGenerator {
     }
 
     public void pruneTuples() {
+        for (int ctr = this.operatorTree.size(); ctr > 0; ctr--) {
+            SingleOperator operator = this.operatorTree.get(ctr - 1);
 
+            for(EquivalenceClass equivalenceClass : operator.getEquivalenceClasses()){
+                if(equivalenceClass.hasExample() && equivalenceClass.getExamples().size() > 1){
+
+                }
+            }
+        }
     }
 
 
@@ -370,6 +323,7 @@ public class TupleGenerator {
 
                 if (!loadExamples.isEmpty()) {
                     loadEquivalenceClass.getLoadExample().setHasExample(true);
+                    loadEquivalenceClass.getLoadExample().setExamples(loadExamples);
                 } else
                     loadEquivalenceClass.getLoadExample().setHasExample(false);
 
@@ -382,8 +336,10 @@ public class TupleGenerator {
             if (operator.getOperatorType() == OperatorType.JOIN) {
                 List joinExamples = operator.getOperatorOutputAsList();
                 JoinEquivalenceClasses joinEquivalenceClass = new JoinEquivalenceClasses();
-                if (!joinExamples.isEmpty())
+                if (!joinExamples.isEmpty()){
                     joinEquivalenceClass.getJoinedExample().setHasExample(true);
+                    joinEquivalenceClass.getJoinedExample().setExamples(joinExamples);
+                }
                 else
                     joinEquivalenceClass.getJoinedExample().setHasExample(false);
 
@@ -400,13 +356,17 @@ public class TupleGenerator {
                 List secondParentExamples = operator.getParentOperators().get(1).getOperatorOutputAsList();
                 UnionCrossEquivalenceClasses unionCrossEquivalenceClasses = new UnionCrossEquivalenceClasses();
 
-                if(!firstParentExamples.isEmpty())
+                if(!firstParentExamples.isEmpty()) {
                     unionCrossEquivalenceClasses.getFirstTableExample().setHasExample(true);
+                    unionCrossEquivalenceClasses.getFirstTableExample().setExamples(firstParentExamples);
+                }
                 else
                     unionCrossEquivalenceClasses.getFirstTableExample().setHasExample(false);
 
-                if(!secondParentExamples.isEmpty())
+                if(!secondParentExamples.isEmpty()) {
                     unionCrossEquivalenceClasses.getSecondTableExample().setHasExample(true);
+                    unionCrossEquivalenceClasses.getSecondTableExample().setExamples(secondParentExamples);
+                }
                 else
                     unionCrossEquivalenceClasses.getSecondTableExample().setHasExample(false);
 
@@ -453,8 +413,6 @@ public class TupleGenerator {
                 valueSetTuple.setField(drillToBasicType(((CompositeType) typeInformation).getTypeAt(ctr), tokens), ctr);
 
             else {
-                String name = ((CompositeType) typeInformation).getTypeAt(ctr).toString();//todo add tuple field from source
-
                 valueSetTuple.setField(tokens.get(0), ctr);
                 tokens.remove(tokens.get(0));
                 /*if (name.equalsIgnoreCase("String"))
