@@ -299,7 +299,9 @@ public class TupleGenerator {
 
             for(EquivalenceClass equivalenceClass : operator.getEquivalenceClasses()){
                 if(equivalenceClass.hasExample() && equivalenceClass.getExamples().size() > 1){
-
+                    //remove one by one from upstream operators, while removing from upstream operator
+                    //check the equivalence class of that operator is still maintained and not empty
+                    operator.getOperatorOutputAsList().remove(0);
                 }
             }
         }
