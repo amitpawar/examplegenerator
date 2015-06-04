@@ -29,15 +29,7 @@ public class SingleOperator {
     private int outputDataSetId;
     private List operatorOutputAsList;
     private Tuple constraintRecords;
-    private Set<Object> loadExample;
 
-    public Set<Object> getLoadExample() {
-        return loadExample;
-    }
-
-    public void setLoadExample(Set<Object> loadExample) {
-        this.loadExample = loadExample;
-    }
 
 
 

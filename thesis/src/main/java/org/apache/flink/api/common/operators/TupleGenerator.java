@@ -91,11 +91,8 @@ public class TupleGenerator {
                 else
                     operator.setOperatorOutputAsList(output);
 
-                if(operator.getLoadExample() != null )
-                    operator.getLoadExample().addAll(output);
-                else
-                    operator.setLoadExample(new HashSet<Object>(output));
-                addToLineageTracer(operator.getLoadExample(), operator, output.get(0));
+
+                addToLineageTracer(output.get(0), operator, output.get(0));
 
                 this.operatorOrderMap.put(this.orderCounter++, operator);
 
@@ -117,17 +114,17 @@ public class TupleGenerator {
         }
     }
 
-    public void addToLineageTracer(Set<Object> inputExamples, SingleOperator operator, Object outputExample){
-        for(Object inputExample : inputExamples) {
-            if (this.lineageTracker.containsKey(inputExample)) {
-                Map<SingleOperator, Object> exampleTracker = this.lineageTracker.get(inputExample);
-                exampleTracker.put(operator, outputExample);
-            } else {
-                Map<SingleOperator, Object> exampleTracker = new HashMap<SingleOperator, Object>();
-                exampleTracker.put(operator, outputExample);
-                this.lineageTracker.put(inputExample, exampleTracker);
-            }
+    public void addToLineageTracer(Object inputExample, SingleOperator operator, Object outputExample){
+
+        if (this.lineageTracker.containsKey(inputExample)) {
+            Map<SingleOperator, Object> exampleTracker = this.lineageTracker.get(inputExample);
+            exampleTracker.put(operator, outputExample);
+        } else {
+            Map<SingleOperator, Object> exampleTracker = new HashMap<SingleOperator, Object>();
+            exampleTracker.put(operator, outputExample);
+            this.lineageTracker.put(inputExample, exampleTracker);
         }
+
 
     }
     public void displayExamples(List<SingleOperator> operatorTree){
@@ -206,8 +203,6 @@ public class TupleGenerator {
         Operator operator = singleOperator.getOperator();
         if (operator instanceof SingleInputOperator) {
 
-             singleOperator.setLoadExample(singleOperator.getParentOperators().get(0).getLoadExample());
-
             List<Object> input1 = singleOperator.getParentOperators().get(0).getOperatorOutputAsList();
 
             for(List<Object> singleExample : Lists.partition(input1,1)){
@@ -219,7 +214,7 @@ public class TupleGenerator {
                     if(singleOperator.getOperatorType() != OperatorType.DISTINCT)
                         output.add(outputExample.get(0));
 
-                    addToLineageTracer(singleOperator.getLoadExample(),singleOperator,outputExample.get(0));
+                    addToLineageTracer(singleExample.get(0),singleOperator,outputExample.get(0));
                 }
             }
             //output = ((SingleInputOperator) operator).executeOnCollections(input1, null, this.env.getConfig());
@@ -228,25 +223,20 @@ public class TupleGenerator {
             List<Object> input1 = singleOperator.getParentOperators().get(0).getOperatorOutputAsList();
             List<Object> input2 = singleOperator.getParentOperators().get(1).getOperatorOutputAsList();
 
-            Set<Object> loadExamples = new HashSet<Object>();
-            Set<Object> loadExamples1 = singleOperator.getParentOperators().get(0).getLoadExample();
-            Set<Object> loadExamples2 = singleOperator.getParentOperators().get(1).getLoadExample();
-            loadExamples.addAll(loadExamples1);
-            loadExamples.addAll(loadExamples2);
-            singleOperator.setLoadExample(loadExamples);
+
 
             for(List<Object> singleExample : Lists.partition(input1,1)){
                 List outputExample = ((DualInputOperator) operator).executeOnCollections(singleExample, input2, null, this.env.getConfig());
                 if(!outputExample.isEmpty() && !output.contains(outputExample.get(0))) {
                     output.add(outputExample.get(0));
-                    addToLineageTracer(singleOperator.getLoadExample(), singleOperator, outputExample.get(0));
+                    addToLineageTracer(singleExample.get(0), singleOperator, outputExample.get(0));
                 }
             }
             for(List<Object> singleExample : Lists.partition(input2,1)){
                 List outputExample = ((DualInputOperator) operator).executeOnCollections(input1, singleExample, null, this.env.getConfig());
                 if(!outputExample.isEmpty() && !output.contains(outputExample.get(0))) {
                     output.add(outputExample.get(0));
-                    addToLineageTracer(singleOperator.getLoadExample(), singleOperator, outputExample.get(0));
+                    addToLineageTracer(singleExample.get(0), singleOperator, outputExample.get(0));
                 }
             }
             // output = ((DualInputOperator) operator).executeOnCollections(input1, input2, null, this.env.getConfig());
