@@ -66,9 +66,7 @@ public class TupleGenerator {
             for(int k = 0; k < operatorTree.size(); k++) {
                 SingleOperator operator = operatorTree.get(k);
                 if(operator.getOperatorType() != OperatorType.SOURCE) {
-
                     executeOperatorPerRecord(operator);
-
                 }
             }
         }
@@ -87,28 +85,50 @@ public class TupleGenerator {
                 inputList.add(returnRandomTuple(operator.getParentOperators().get(0).getOperatorOutputAsList(), randomGenerator));
                 List output = ((SingleInputOperator) operator.getOperator()).executeOnCollections(inputList, null, this.env.getConfig());
 
-                if(operator.getOperatorOutputAsList() != null)
+
+                if (operator.getOperatorOutputAsList() != null)
                     operator.getOperatorOutputAsList().addAll(output);
                 else
                     operator.setOperatorOutputAsList(output);
+
+                if(operator.getLoadExample() != null )
+                    operator.getLoadExample().addAll(output);
+                else
+                    operator.setLoadExample(new HashSet<Object>(output));
+                addToLineageTracer(operator.getLoadExample(), operator, output.get(0));
+
                 this.operatorOrderMap.put(this.orderCounter++, operator);
 
             }
             else {
                 List output = executeIndividualOperator(operator);
 
-                if(operator.getOperatorOutputAsList() != null){
+
+                if (operator.getOperatorOutputAsList() != null) {
                     operator.getOperatorOutputAsList().clear();
                     operator.getOperatorOutputAsList().addAll(output);
-                }
-
-                else
+                } else
                     operator.setOperatorOutputAsList(output);
+
                 this.operatorOrderMap.put(this.orderCounter++, operator);
 
             }
 
         }
+    }
+
+    public void addToLineageTracer(Set<Object> inputExamples, SingleOperator operator, Object outputExample){
+        for(Object inputExample : inputExamples) {
+            if (this.lineageTracker.containsKey(inputExample)) {
+                Map<SingleOperator, Object> exampleTracker = this.lineageTracker.get(inputExample);
+                exampleTracker.put(operator, outputExample);
+            } else {
+                Map<SingleOperator, Object> exampleTracker = new HashMap<SingleOperator, Object>();
+                exampleTracker.put(operator, outputExample);
+                this.lineageTracker.put(inputExample, exampleTracker);
+            }
+        }
+
     }
     public void displayExamples(List<SingleOperator> operatorTree){
         for(SingleOperator operator : operatorTree){
@@ -185,6 +205,9 @@ public class TupleGenerator {
         List<Object> output = new ArrayList();
         Operator operator = singleOperator.getOperator();
         if (operator instanceof SingleInputOperator) {
+
+             singleOperator.setLoadExample(singleOperator.getParentOperators().get(0).getLoadExample());
+
             List<Object> input1 = singleOperator.getParentOperators().get(0).getOperatorOutputAsList();
 
             for(List<Object> singleExample : Lists.partition(input1,1)){
@@ -195,6 +218,8 @@ public class TupleGenerator {
                         output.add(outputExample.get(0));
                     if(singleOperator.getOperatorType() != OperatorType.DISTINCT)
                         output.add(outputExample.get(0));
+
+                    addToLineageTracer(singleOperator.getLoadExample(),singleOperator,outputExample.get(0));
                 }
             }
             //output = ((SingleInputOperator) operator).executeOnCollections(input1, null, this.env.getConfig());
@@ -203,17 +228,28 @@ public class TupleGenerator {
             List<Object> input1 = singleOperator.getParentOperators().get(0).getOperatorOutputAsList();
             List<Object> input2 = singleOperator.getParentOperators().get(1).getOperatorOutputAsList();
 
+            Set<Object> loadExamples = new HashSet<Object>();
+            Set<Object> loadExamples1 = singleOperator.getParentOperators().get(0).getLoadExample();
+            Set<Object> loadExamples2 = singleOperator.getParentOperators().get(1).getLoadExample();
+            loadExamples.addAll(loadExamples1);
+            loadExamples.addAll(loadExamples2);
+            singleOperator.setLoadExample(loadExamples);
+
             for(List<Object> singleExample : Lists.partition(input1,1)){
                 List outputExample = ((DualInputOperator) operator).executeOnCollections(singleExample, input2, null, this.env.getConfig());
-                if(!outputExample.isEmpty() && !output.contains(outputExample.get(0)))
+                if(!outputExample.isEmpty() && !output.contains(outputExample.get(0))) {
                     output.add(outputExample.get(0));
+                    addToLineageTracer(singleOperator.getLoadExample(), singleOperator, outputExample.get(0));
+                }
             }
             for(List<Object> singleExample : Lists.partition(input2,1)){
                 List outputExample = ((DualInputOperator) operator).executeOnCollections(input1, singleExample, null, this.env.getConfig());
-                if(!outputExample.isEmpty() && !output.contains(outputExample.get(0)))
+                if(!outputExample.isEmpty() && !output.contains(outputExample.get(0))) {
                     output.add(outputExample.get(0));
+                    addToLineageTracer(singleOperator.getLoadExample(), singleOperator, outputExample.get(0));
+                }
             }
-           // output = ((DualInputOperator) operator).executeOnCollections(input1, input2, null, this.env.getConfig());
+            // output = ((DualInputOperator) operator).executeOnCollections(input1, input2, null, this.env.getConfig());
         }
         return output;
     }
@@ -558,16 +594,16 @@ public class TupleGenerator {
         Collections.sort(keyListToIterate, Collections.reverseOrder()); //start from root move upstream to leaf
 
         //for (int id : keyListToIterate) {
-            int id = keyListToIterate.get(0); //get the last root record id
-            SingleOperator operator = this.operatorOrderMap.get(id);
+        int id = keyListToIterate.get(0); //get the last root record id
+        SingleOperator operator = this.operatorOrderMap.get(id);
 
-            for (Object example : operator.getOperatorOutputAsList()) {
-                LinkedList lineageGroup = new LinkedList();
-                lineageGroup.add(example);
-                constructLineageChainUsingString(example, lineageGroup, keyListToIterate, id);
-                lineages.add(lineageGroup);
-            }
-       // }
+        for (Object example : operator.getOperatorOutputAsList()) {
+            LinkedList lineageGroup = new LinkedList();
+            lineageGroup.add(example);
+            constructLineageChainUsingString(example, lineageGroup, keyListToIterate, id);
+            lineages.add(lineageGroup);
+        }
+        // }
         System.out.println("Lineages------");
         for(LinkedList singleList : lineages)
             System.out.println(singleList);
@@ -630,7 +666,7 @@ public class TupleGenerator {
         return listWithLoadExample;
     }
     public LinkedList constructLineageChainUsingTuples(Object currentExample, LinkedList listWithLoadExample,
-                                            List<Integer> opOrder, int currentId){
+                                                       List<Integer> opOrder, int currentId){
 
         for(int prevId : opOrder){
             if(prevId < currentId){

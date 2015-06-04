@@ -1,6 +1,7 @@
 package thesis.input.operatortree;
 
 import java.util.List;
+import java.util.Set;
 
 import org.apache.flink.api.common.operators.Operator;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
@@ -28,6 +29,17 @@ public class SingleOperator {
     private int outputDataSetId;
     private List operatorOutputAsList;
     private Tuple constraintRecords;
+    private Set<Object> loadExample;
+
+    public Set<Object> getLoadExample() {
+        return loadExample;
+    }
+
+    public void setLoadExample(Set<Object> loadExample) {
+        this.loadExample = loadExample;
+    }
+
+
 
 
     public Tuple getConstraintRecords() {
