@@ -116,17 +116,29 @@ public class TupleGenerator {
 
     public void addToLineageTracer(Object inputExample, SingleOperator operator, Object outputExample){
 
-        if (this.lineageTracker.containsKey(inputExample)) {
-            Map<SingleOperator, Object> exampleTracker = this.lineageTracker.get(inputExample);
-            exampleTracker.put(operator, outputExample);
-        } else {
-            Map<SingleOperator, Object> exampleTracker = new HashMap<SingleOperator, Object>();
-            exampleTracker.put(operator, outputExample);
-            this.lineageTracker.put(inputExample, exampleTracker);
+        if(!checkIfAlreadyInTracer(inputExample,outputExample,operator)) {
+            if (this.lineageTracker.containsKey(inputExample)) {
+                Map<SingleOperator, Object> exampleTracker = this.lineageTracker.get(inputExample);
+                exampleTracker.put(operator, outputExample);
+            } else {
+                Map<SingleOperator, Object> exampleTracker = new HashMap<SingleOperator, Object>();
+                exampleTracker.put(operator, outputExample);
+                this.lineageTracker.put(inputExample, exampleTracker);
+            }
         }
-
-
     }
+
+    public boolean checkIfAlreadyInTracer(Object inputExample, Object outputExample, SingleOperator operator){
+        boolean flag = false;
+        for(Map<SingleOperator,Object> recordTracer : this.lineageTracker.values()){
+            if(recordTracer.values().contains(inputExample)){
+                recordTracer.put(operator,outputExample);
+                flag = true;
+            }
+        }
+        return flag;
+    }
+
     public void displayExamples(List<SingleOperator> operatorTree){
         for(SingleOperator operator : operatorTree){
             System.out.println(operator.getOperatorType() +" "+operator.getOperatorName());
@@ -231,8 +243,11 @@ public class TupleGenerator {
                     for(Object outputExample : outputExamples) {
                         if(!output.contains(outputExample)) {
                             output.add(outputExample);
-                            addToLineageTracer(singleExample.get(0), singleOperator, outputExample);
                         }
+                        if(singleOperator.getOperatorType() != OperatorType.UNION)
+                            addToLineageTracer(singleExample.get(0), singleOperator, outputExample);
+                        if(singleOperator.getOperatorType() == OperatorType.UNION)
+                            addToLineageTracer(singleExample.get(0), singleOperator, singleExample.get(0));
                     }
                 }
             }
@@ -242,8 +257,12 @@ public class TupleGenerator {
                     for(Object outputExample : outputExamples) {
                         if(!output.contains(outputExample)) {
                             output.add(outputExample);
-                            addToLineageTracer(singleExample.get(0), singleOperator, outputExample);
                         }
+                        if(singleOperator.getOperatorType() != OperatorType.UNION)
+                            addToLineageTracer(singleExample.get(0), singleOperator, outputExample);
+                        if(singleOperator.getOperatorType() == OperatorType.UNION)
+                            addToLineageTracer(singleExample.get(0), singleOperator, singleExample.get(0));
+
                     }
                 }
             }
