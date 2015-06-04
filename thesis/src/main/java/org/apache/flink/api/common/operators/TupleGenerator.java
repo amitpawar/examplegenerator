@@ -147,53 +147,6 @@ public class TupleGenerator {
         }
     }
 
-    public void downStreamPass(List<SingleOperator> operatorTree) throws Exception {
-        for (int i = 0; i < operatorTree.size(); i++) {
-            SingleOperator operator = operatorTree.get(i);
-
-            if (operator.getOperatorType() == OperatorType.SOURCE) {
-
-                List list = ((GenericDataSourceBase) operator.getOperator()).executeOnCollections(this.env.getConfig());
-                operator.setOperatorOutputAsList(list);
-                System.out.println("SOURCE " + operator.getOperatorName());
-                for (Object object : list)
-                    System.out.println(object);
-            }
-
-            //todo in case of a POJO object
-            if (operator.getOperatorType() == OperatorType.LOAD) {
-
-                List inputList = new ArrayList();
-                Random randomGenerator = new Random();
-                for (int j = 0; j < this.maxRecords; j++) {
-                    inputList.add(returnRandomTuple(operator.getParentOperators().get(0).getOperatorOutputAsList(), randomGenerator));
-                }
-
-
-                List list = ((SingleInputOperator) operator.getOperator()).executeOnCollections(inputList,
-                        null, this.env.getConfig());
-                operator.setOperatorOutputAsList(list);
-                System.out.println("LOAD " + operator.getOperatorName());
-                this.operatorOrderMap.put(this.orderCounter++,operator);
-                for (Object object : list)
-                    System.out.println(object);
-            }
-
-            if (operator.getOperatorType() != OperatorType.SOURCE && operator.getOperatorType() != OperatorType.LOAD) {
-                List output = executeIndividualOperator(operator);
-                System.out.println(operator.getOperatorType());
-                operator.setOperatorOutputAsList(output);
-                this.operatorOrderMap.put(this.orderCounter++,operator);
-                for (Object object : output)
-                    System.out.println(object);
-
-            }
-        }
-    }
-
-
-
-
     public void afterUpstreampass(List<SingleOperator> operatorTree) throws Exception {
         for (int i = 0; i < operatorTree.size(); i++) {
             SingleOperator operator = operatorTree.get(i);
@@ -440,7 +393,7 @@ public class TupleGenerator {
                 //remove one by one from upstream operators, while removing from upstream operator
                 //check the equivalence class of that operator is still maintained and not empty
                 //Object prunedItem = operator.getOperatorOutputAsList().remove(0);
-                getRecordLineage(operator);
+
 
             }
         }
@@ -603,115 +556,9 @@ public class TupleGenerator {
         return valueSetTuple;
     }
 
-    public void getRecordLineageTest() {
-        List<LinkedList> lineages = new ArrayList<LinkedList>();
-        Set keySet = this.operatorOrderMap.keySet();
-        List<Integer> keyListToIterate = new ArrayList<Integer>();
-        keyListToIterate.addAll(keySet);
-        Collections.sort(keyListToIterate, Collections.reverseOrder()); //start from root move upstream to leaf
 
-        //for (int id : keyListToIterate) {
-        int id = keyListToIterate.get(0); //get the last root record id
-        SingleOperator operator = this.operatorOrderMap.get(id);
 
-        for (Object example : operator.getOperatorOutputAsList()) {
-            LinkedList lineageGroup = new LinkedList();
-            lineageGroup.add(example);
-            constructLineageChainUsingString(example, lineageGroup, keyListToIterate, id);
-            lineages.add(lineageGroup);
-        }
-        // }
-        System.out.println("Lineages------");
-        for(LinkedList singleList : lineages)
-            System.out.println(singleList);
-    }
 
-    public void getRecordLineage(SingleOperator operator){
-        Map<Object,Map<SingleOperator,Object>> recordLineage = new HashMap<Object, Map<SingleOperator, Object>>();
-
-        for(Object example : operator.getOperatorOutputAsList()){
-            //todo search by concrete tuple field Java1(Java2(String,Long)) - search String and Long separately
-            Map<SingleOperator, Object> lineageTrace = new HashMap<SingleOperator, Object>();
-            lineageTrace.put(operator,example);
-            constructLineageChain(lineageTrace,example,operator);
-            recordLineage.put(example,lineageTrace);
-        }
-        System.out.println(recordLineage);
-    }
-
-    public void constructLineageChain(Map<SingleOperator,Object> lineageTrace,Object example, SingleOperator parent){
-
-        for (SingleOperator upstreamParent : parent.getParentOperators()) {
-            if (upstreamParent.getOperatorType() != OperatorType.SOURCE) {
-                List upstreamParentOutput = upstreamParent.getOperatorOutputAsList();
-                for (Object upstreamParentExample : upstreamParentOutput) {
-                    if (parentHasTheRecordExampleTuple(upstreamParentExample, example))
-                        lineageTrace.put(upstreamParent, upstreamParentExample);
-                }
-                constructLineageChain(lineageTrace, example, upstreamParent);
-            }
-        }
-
-    }
-
-    //todo check token wise
-    public boolean parentHasTheRecordExampleTuple(Object parentExample, Object example){
-        String parentExampleString = parentExample.toString().replaceAll("[\\(\\)]", "");
-        String exampleTupleString = example.toString().replaceAll("[\\(\\)]", "");
-        if (parentExampleString.contains(exampleTupleString)) {
-            return true;
-        }
-        else
-            return false;
-    }
-
-    public LinkedList constructLineageChainUsingString(Object currentExample, LinkedList listWithLoadExample,
-                                                       List<Integer> opOrder, int currentId){
-        for(int prevId : opOrder) {
-            if (prevId < currentId) {
-                SingleOperator previousOperator = this.operatorOrderMap.get(prevId);
-                List outputOfPreviousOperator = previousOperator.getOperatorOutputAsList();
-                for (Object example : outputOfPreviousOperator) {
-                    String currentExampleString = currentExample.toString().replaceAll("[\\(\\)]", "");
-                    String exampleTupleString = example.toString().replaceAll("[\\(\\)]", "");
-                    if (exampleTupleString.contains(currentExampleString)) {
-                        listWithLoadExample.addFirst(example);
-                    }
-                }
-            }
-        }
-        return listWithLoadExample;
-    }
-    public LinkedList constructLineageChainUsingTuples(Object currentExample, LinkedList listWithLoadExample,
-                                                       List<Integer> opOrder, int currentId){
-
-        for(int prevId : opOrder){
-            if(prevId < currentId){
-                SingleOperator previousOperator = this.operatorOrderMap.get(prevId);
-                List outputOfPreviousOperator = previousOperator.getOperatorOutputAsList();
-                for(Object example : outputOfPreviousOperator){
-                    Tuple currentTuple = (Tuple) currentExample;
-                    Tuple exampleTuple = (Tuple) example;
-
-                    for(int i = 0;i < exampleTuple.getArity();i++) {
-                        for(int j = 0; j < currentTuple.getArity();j++) {
-                            if (exampleTuple.getField(i).equals(currentTuple.getField(j))) {
-                                listWithLoadExample.addFirst(example);
-                            }
-
-                        }
-                    }
-                    //for load operator or cases with comparison of Java1(Java2(,)) with Java2(,)
-                    for(int  k = 0; k < currentTuple.getArity();k++){
-                        if(exampleTuple.equals(currentTuple.getField(k))){
-                            listWithLoadExample.addFirst(example);
-                        }
-                    }
-                }
-            }
-        }
-        return listWithLoadExample;
-    }
 
 
     /////////////////////////////
