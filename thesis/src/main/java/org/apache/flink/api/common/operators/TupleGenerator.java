@@ -226,17 +226,25 @@ public class TupleGenerator {
 
 
             for(List<Object> singleExample : Lists.partition(input1,1)){
-                List outputExample = ((DualInputOperator) operator).executeOnCollections(singleExample, input2, null, this.env.getConfig());
-                if(!outputExample.isEmpty() && !output.contains(outputExample.get(0))) {
-                    output.add(outputExample.get(0));
-                    addToLineageTracer(singleExample.get(0), singleOperator, outputExample.get(0));
+                List outputExamples = ((DualInputOperator) operator).executeOnCollections(singleExample, input2, null, this.env.getConfig());
+                if(!outputExamples.isEmpty() ) {
+                    for(Object outputExample : outputExamples) {
+                        if(!output.contains(outputExample)) {
+                            output.add(outputExample);
+                            addToLineageTracer(singleExample.get(0), singleOperator, outputExample);
+                        }
+                    }
                 }
             }
             for(List<Object> singleExample : Lists.partition(input2,1)){
-                List outputExample = ((DualInputOperator) operator).executeOnCollections(input1, singleExample, null, this.env.getConfig());
-                if(!outputExample.isEmpty() && !output.contains(outputExample.get(0))) {
-                    output.add(outputExample.get(0));
-                    addToLineageTracer(singleExample.get(0), singleOperator, outputExample.get(0));
+                List outputExamples = ((DualInputOperator) operator).executeOnCollections(input1, singleExample, null, this.env.getConfig());
+                if(!outputExamples.isEmpty() ) {
+                    for(Object outputExample : outputExamples) {
+                        if(!output.contains(outputExample)) {
+                            output.add(outputExample);
+                            addToLineageTracer(singleExample.get(0), singleOperator, outputExample);
+                        }
+                    }
                 }
             }
             // output = ((DualInputOperator) operator).executeOnCollections(input1, input2, null, this.env.getConfig());
