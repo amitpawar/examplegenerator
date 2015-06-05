@@ -398,7 +398,7 @@ public class TupleGenerator {
                 //remove one by one from upstream operators, while removing from upstream operator
                 //check the equivalence class of that operator is still maintained and not empty
                 Object exampleToPrune = operator.getOperatorOutputAsList().get(0);
-                for(Map<SingleOperator,Object> recordTracer : this.lineageTracker.values()){
+                for(LinkedHashMap<SingleOperator,Object> recordTracer : this.lineageTracker.values()){
                     if(recordTracer.values().contains(exampleToPrune)){
                         checkPruningIsOK(recordTracer);
                     }
@@ -408,8 +408,10 @@ public class TupleGenerator {
 
     }
 
-    public void checkPruningIsOK(Map<SingleOperator, Object> recordTracer){
-        for(SingleOperator operator : recordTracer.keySet()){
+    public void checkPruningIsOK(LinkedHashMap<SingleOperator, Object> recordTracer){
+        LinkedList<SingleOperator> operatorList = new LinkedList<SingleOperator>(recordTracer.keySet());
+        for(int i = 1; i <= operatorList.size();i++){
+            SingleOperator operator = operatorList.get(operatorList.size()-i);
             Object exampleUnderScrutiny = recordTracer.get(operator);
             operator.getOperatorOutputAsList().remove(exampleUnderScrutiny);
             setOperatorEquivalenceClassess(operator);
