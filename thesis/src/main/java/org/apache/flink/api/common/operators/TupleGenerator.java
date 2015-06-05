@@ -28,7 +28,7 @@ public class TupleGenerator {
     private Object joinKey = null;
     private int maxRecords = -1;
     private Map<Integer,SingleOperator> operatorOrderMap = new HashMap<Integer, SingleOperator>();
-    private Map<Object,Map<SingleOperator,Object>> lineageTracker = new HashMap<Object, Map<SingleOperator, Object>>();
+    private Map<Object,LinkedHashMap<SingleOperator,Object>> lineageTracker = new HashMap<Object, LinkedHashMap<SingleOperator, Object>>();
     private int orderCounter = 0;
 
 
@@ -124,7 +124,7 @@ public class TupleGenerator {
                 Map<SingleOperator, Object> exampleTracker = this.lineageTracker.get(inputExample);
                 exampleTracker.put(operator, outputExample);
             } else {
-                Map<SingleOperator, Object> exampleTracker = new HashMap<SingleOperator, Object>();
+                LinkedHashMap<SingleOperator, Object> exampleTracker = new LinkedHashMap<SingleOperator, Object>();
                 exampleTracker.put(operator, outputExample);
                 this.lineageTracker.put(inputExample, exampleTracker);
             }
@@ -144,9 +144,11 @@ public class TupleGenerator {
 
     public void displayExamples(List<SingleOperator> operatorTree){
         for(SingleOperator operator : operatorTree){
-            System.out.println(operator.getOperatorType() +" "+operator.getOperatorName());
-            for(Object object : operator.getOperatorOutputAsList())
-                System.out.println(object);
+            if(operator.getOperatorType()!=OperatorType.SOURCE) {
+                System.out.println(operator.getOperatorType() + " " + operator.getOperatorName());
+                for (Object object : operator.getOperatorOutputAsList())
+                    System.out.println(object);
+            }
         }
     }
 
