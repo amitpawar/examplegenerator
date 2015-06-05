@@ -38,19 +38,22 @@ public class TupleGenerator {
         this.operatorTree = operatorTree;
         this.env = env;
         this.maxRecords = maxRecords;
-        //downStreamPass(this.operatorTree);
-        downStreamTest(this.operatorTree);
+        downStreamPass(this.operatorTree);
         setEquivalenceClasses();
+        System.out.println("After Downstream-----------------");
+        displayExamples(this.operatorTree);
         upStreamPass(this.operatorTree);
         afterUpstreampass(this.operatorTree);
         setEquivalenceClasses();
-        /*pruneTuples();*/
-        //downStreamTest(this.operatorTree);
-        // getRecordLineage();
-        //System.out.println(this.lineageGroup);
+        System.out.println("After Upstream-----------------");
+        displayExamples(this.operatorTree);
+        pruneTuples();
+        System.out.println("After Pruning-----------------");
+        displayExamples(this.operatorTree);
+
     }
 
-    public void downStreamTest(List<SingleOperator> operatorTree) throws Exception {
+    public void downStreamPass(List<SingleOperator> operatorTree) throws Exception {
         for(int i = 0; i < operatorTree.size();i++){
 
             SingleOperator operator = operatorTree.get(i);
@@ -70,7 +73,7 @@ public class TupleGenerator {
                 }
             }
         }
-        displayExamples(operatorTree);
+        //displayExamples(operatorTree);
 
     }
 
@@ -153,10 +156,10 @@ public class TupleGenerator {
 
             if (operator.getOperatorType() != OperatorType.SOURCE && operator.getOperatorType() != OperatorType.LOAD) {
                 List output = executeIndividualOperator(operator);
-                System.out.println("After upstream------------" + operator.getOperatorType());
+               // System.out.println("After upstream------------" + operator.getOperatorType());
                 operator.setOperatorOutputAsList(output);
-                for (Object object : output)
-                    System.out.println(object);
+               // for (Object object : output)
+                   // System.out.println(object);
 
             }
         }
@@ -246,7 +249,7 @@ public class TupleGenerator {
                     //cross union will have 2 eq classes, one for each table
                     for(EquivalenceClass equivalenceClass : operator.getEquivalenceClasses()){
                         if(!equivalenceClass.hasExample()){
-                            System.out.println(equivalenceClass.getName()+" is empty");
+                            //System.out.println(equivalenceClass.getName()+" is empty");
                             fillUnionCrossEquivalenceClass(operator,equivalenceClass);
                         }
                     }
@@ -327,7 +330,7 @@ public class TupleGenerator {
         SingleOperator parent = child.getParentOperators().get(0);
         //convert only if its a leaf operator
         if (parent.getOperator() instanceof GenericDataSourceBase) {
-            System.out.println("UNUSED-----");
+           // System.out.println("UNUSED-----");
             List unUsedExamplesAtLeaf = getUnusedExamplesFromBaseTable(parent, child, child.getOperatorOutputAsList());
             loadOperatorWithUnUsedExamples.put(child, unUsedExamplesAtLeaf);
             //Tuple constraintRecord = child.getConstraintRecords();
@@ -347,7 +350,7 @@ public class TupleGenerator {
                 }
 
             }
-            System.out.println("-------------------Changed Constraint Record-----------" + constraintRecord);
+           // System.out.println("-------------------Changed Constraint Record-----------" + constraintRecord);
             // child.getOperatorOutputAsList().add(constraintRecord);
         }
     }
@@ -389,15 +392,28 @@ public class TupleGenerator {
         SingleOperator operator = this.operatorTree.get(this.operatorTree.size() - 1);
 
         for (EquivalenceClass equivalenceClass : operator.getEquivalenceClasses()) {
-            if (equivalenceClass.hasExample()) {
+            if (equivalenceClass.hasExample() && equivalenceClass.getExamples().size() > 1) {
                 //remove one by one from upstream operators, while removing from upstream operator
                 //check the equivalence class of that operator is still maintained and not empty
-                //Object prunedItem = operator.getOperatorOutputAsList().remove(0);
-
-
+                Object exampleToPrune = operator.getOperatorOutputAsList().get(0);
+                for(Map<SingleOperator,Object> recordTracer : this.lineageTracker.values()){
+                    if(recordTracer.values().contains(exampleToPrune)){
+                        checkPruningIsOK(recordTracer);
+                    }
+                }
             }
         }
 
+    }
+
+    public void checkPruningIsOK(Map<SingleOperator, Object> recordTracer){
+        for(SingleOperator operator : recordTracer.keySet()){
+            Object exampleUnderScrutiny = recordTracer.get(operator);
+            operator.getOperatorOutputAsList().remove(exampleUnderScrutiny);
+            setOperatorEquivalenceClassess(operator);
+            if(!checkEquivalenceClasses(operator))
+                operator.getOperatorOutputAsList().add(exampleUnderScrutiny);
+        }
     }
 
 
@@ -411,117 +427,121 @@ public class TupleGenerator {
 
     public void setEquivalenceClasses() {
         for (SingleOperator operator : this.operatorTree) {
+            setOperatorEquivalenceClassess(operator);
+        }
+    }
 
-            if (operator.getOperatorType() == OperatorType.LOAD) {
-                List loadExamples = operator.getOperatorOutputAsList();
-                SingleEquivalenceClass loadEquivalenceClass = new SingleEquivalenceClass();
+    public void setOperatorEquivalenceClassess(SingleOperator operator){
+        if (operator.getOperatorType() == OperatorType.LOAD) {
+            List loadExamples = operator.getOperatorOutputAsList();
+            SingleEquivalenceClass loadEquivalenceClass = new SingleEquivalenceClass();
 
-                if (!loadExamples.isEmpty()) {
-                    loadEquivalenceClass.getSingleExample().setHasExample(true);
-                    loadEquivalenceClass.getSingleExample().setExamples(loadExamples);
-                } else
-                    loadEquivalenceClass.getSingleExample().setHasExample(false);
+            if (!loadExamples.isEmpty()) {
+                loadEquivalenceClass.getSingleExample().setHasExample(true);
+                loadEquivalenceClass.getSingleExample().setExamples(loadExamples);
+            } else
+                loadEquivalenceClass.getSingleExample().setHasExample(false);
 
-                List<EquivalenceClass> equivalenceClasses = new ArrayList<EquivalenceClass>();
-                equivalenceClasses.add(loadEquivalenceClass.getSingleExample());
-                loadEquivalenceClass.setSingleExample(loadEquivalenceClass.getSingleExample());
-                operator.setEquivalenceClasses(equivalenceClasses);
+            List<EquivalenceClass> equivalenceClasses = new ArrayList<EquivalenceClass>();
+            equivalenceClasses.add(loadEquivalenceClass.getSingleExample());
+            loadEquivalenceClass.setSingleExample(loadEquivalenceClass.getSingleExample());
+            operator.setEquivalenceClasses(equivalenceClasses);
+        }
+
+        if(operator.getOperatorType() == OperatorType.DISTINCT){
+            List distinctExamples = operator.getOperatorOutputAsList();
+            SingleEquivalenceClass distinctEquivalenceClass = new SingleEquivalenceClass();
+
+            if (!distinctExamples.isEmpty()) {
+                distinctEquivalenceClass.getSingleExample().setHasExample(true);
+                distinctEquivalenceClass.getSingleExample().setExamples(distinctExamples);
+            } else
+                distinctEquivalenceClass.getSingleExample().setHasExample(false);
+
+            List<EquivalenceClass> equivalenceClasses = new ArrayList<EquivalenceClass>();
+            equivalenceClasses.add(distinctEquivalenceClass.getSingleExample());
+            distinctEquivalenceClass.setSingleExample(distinctEquivalenceClass.getSingleExample());
+            operator.setEquivalenceClasses(equivalenceClasses);
+        }
+
+        if(operator.getOperatorType() == OperatorType.PROJECT){
+            List projectExamples = operator.getOperatorOutputAsList();
+            SingleEquivalenceClass projectEquivalenceClass = new SingleEquivalenceClass();
+
+            if (!projectExamples.isEmpty()) {
+                projectEquivalenceClass.getSingleExample().setHasExample(true);
+                projectEquivalenceClass.getSingleExample().setExamples(projectExamples);
+            } else
+                projectEquivalenceClass.getSingleExample().setHasExample(false);
+
+            List<EquivalenceClass> equivalenceClasses = new ArrayList<EquivalenceClass>();
+            equivalenceClasses.add(projectEquivalenceClass.getSingleExample());
+            projectEquivalenceClass.setSingleExample(projectEquivalenceClass.getSingleExample());
+            operator.setEquivalenceClasses(equivalenceClasses);
+        }
+
+
+
+        if (operator.getOperatorType() == OperatorType.JOIN) {
+            List joinExamples = operator.getOperatorOutputAsList();
+            JoinEquivalenceClasses joinEquivalenceClass = new JoinEquivalenceClasses();
+            if (!joinExamples.isEmpty()){
+                joinEquivalenceClass.getJoinedExample().setHasExample(true);
+                joinEquivalenceClass.getJoinedExample().setExamples(joinExamples);
             }
+            else
+                joinEquivalenceClass.getJoinedExample().setHasExample(false);
 
-            if(operator.getOperatorType() == OperatorType.DISTINCT){
-                List distinctExamples = operator.getOperatorOutputAsList();
-                SingleEquivalenceClass distinctEquivalenceClass = new SingleEquivalenceClass();
 
-                if (!distinctExamples.isEmpty()) {
-                    distinctEquivalenceClass.getSingleExample().setHasExample(true);
-                    distinctEquivalenceClass.getSingleExample().setExamples(distinctExamples);
-                } else
-                    distinctEquivalenceClass.getSingleExample().setHasExample(false);
+            List<EquivalenceClass> equivalenceClasses = new ArrayList<EquivalenceClass>();
+            equivalenceClasses.add(joinEquivalenceClass.getJoinedExample());
+            joinEquivalenceClass.setJoinedExample(joinEquivalenceClass.getJoinedExample());
+            operator.setEquivalenceClasses(equivalenceClasses);
 
-                List<EquivalenceClass> equivalenceClasses = new ArrayList<EquivalenceClass>();
-                equivalenceClasses.add(distinctEquivalenceClass.getSingleExample());
-                distinctEquivalenceClass.setSingleExample(distinctEquivalenceClass.getSingleExample());
-                operator.setEquivalenceClasses(equivalenceClasses);
+        }
+
+        if (operator.getOperatorType() == OperatorType.UNION || operator.getOperatorType() == OperatorType.CROSS){
+            List firstParentExamples = operator.getParentOperators().get(0).getOperatorOutputAsList();
+            List secondParentExamples = operator.getParentOperators().get(1).getOperatorOutputAsList();
+            UnionCrossEquivalenceClasses unionCrossEquivalenceClasses = new UnionCrossEquivalenceClasses();
+
+            if(!firstParentExamples.isEmpty()) {
+                unionCrossEquivalenceClasses.getFirstTableExample().setHasExample(true);
+                unionCrossEquivalenceClasses.getFirstTableExample().setExamples(firstParentExamples);
             }
+            else
+                unionCrossEquivalenceClasses.getFirstTableExample().setHasExample(false);
 
-            if(operator.getOperatorType() == OperatorType.PROJECT){
-                List projectExamples = operator.getOperatorOutputAsList();
-                SingleEquivalenceClass projectEquivalenceClass = new SingleEquivalenceClass();
-
-                if (!projectExamples.isEmpty()) {
-                    projectEquivalenceClass.getSingleExample().setHasExample(true);
-                    projectEquivalenceClass.getSingleExample().setExamples(projectExamples);
-                } else
-                    projectEquivalenceClass.getSingleExample().setHasExample(false);
-
-                List<EquivalenceClass> equivalenceClasses = new ArrayList<EquivalenceClass>();
-                equivalenceClasses.add(projectEquivalenceClass.getSingleExample());
-                projectEquivalenceClass.setSingleExample(projectEquivalenceClass.getSingleExample());
-                operator.setEquivalenceClasses(equivalenceClasses);
+            if(!secondParentExamples.isEmpty()) {
+                unionCrossEquivalenceClasses.getSecondTableExample().setHasExample(true);
+                unionCrossEquivalenceClasses.getSecondTableExample().setExamples(secondParentExamples);
             }
+            else
+                unionCrossEquivalenceClasses.getSecondTableExample().setHasExample(false);
 
-
-
-            if (operator.getOperatorType() == OperatorType.JOIN) {
-                List joinExamples = operator.getOperatorOutputAsList();
-                JoinEquivalenceClasses joinEquivalenceClass = new JoinEquivalenceClasses();
-                if (!joinExamples.isEmpty()){
-                    joinEquivalenceClass.getJoinedExample().setHasExample(true);
-                    joinEquivalenceClass.getJoinedExample().setExamples(joinExamples);
-                }
-                else
-                    joinEquivalenceClass.getJoinedExample().setHasExample(false);
-
-
-                List<EquivalenceClass> equivalenceClasses = new ArrayList<EquivalenceClass>();
-                equivalenceClasses.add(joinEquivalenceClass.getJoinedExample());
-                joinEquivalenceClass.setJoinedExample(joinEquivalenceClass.getJoinedExample());
-                operator.setEquivalenceClasses(equivalenceClasses);
-
-            }
-
-            if (operator.getOperatorType() == OperatorType.UNION || operator.getOperatorType() == OperatorType.CROSS){
-                List firstParentExamples = operator.getParentOperators().get(0).getOperatorOutputAsList();
-                List secondParentExamples = operator.getParentOperators().get(1).getOperatorOutputAsList();
-                UnionCrossEquivalenceClasses unionCrossEquivalenceClasses = new UnionCrossEquivalenceClasses();
-
-                if(!firstParentExamples.isEmpty()) {
-                    unionCrossEquivalenceClasses.getFirstTableExample().setHasExample(true);
-                    unionCrossEquivalenceClasses.getFirstTableExample().setExamples(firstParentExamples);
-                }
-                else
-                    unionCrossEquivalenceClasses.getFirstTableExample().setHasExample(false);
-
-                if(!secondParentExamples.isEmpty()) {
-                    unionCrossEquivalenceClasses.getSecondTableExample().setHasExample(true);
-                    unionCrossEquivalenceClasses.getSecondTableExample().setExamples(secondParentExamples);
-                }
-                else
-                    unionCrossEquivalenceClasses.getSecondTableExample().setHasExample(false);
-
-                List<EquivalenceClass> equivalenceClasses = new ArrayList<EquivalenceClass>();
-                equivalenceClasses.add(unionCrossEquivalenceClasses.getFirstTableExample());
-                equivalenceClasses.add(unionCrossEquivalenceClasses.getSecondTableExample());
-                unionCrossEquivalenceClasses.setFirstTableExample(unionCrossEquivalenceClasses.getFirstTableExample());
-                unionCrossEquivalenceClasses.setSecondTableExample(unionCrossEquivalenceClasses.getSecondTableExample());
-                operator.setEquivalenceClasses(equivalenceClasses);
-            }
+            List<EquivalenceClass> equivalenceClasses = new ArrayList<EquivalenceClass>();
+            equivalenceClasses.add(unionCrossEquivalenceClasses.getFirstTableExample());
+            equivalenceClasses.add(unionCrossEquivalenceClasses.getSecondTableExample());
+            unionCrossEquivalenceClasses.setFirstTableExample(unionCrossEquivalenceClasses.getFirstTableExample());
+            unionCrossEquivalenceClasses.setSecondTableExample(unionCrossEquivalenceClasses.getSecondTableExample());
+            operator.setEquivalenceClasses(equivalenceClasses);
         }
     }
 
 
-    public String checkEquivalenceClasses(SingleOperator operator) {
-        String returnString = "";
+    public boolean checkEquivalenceClasses(SingleOperator operator) {
+
+        boolean allEquivalenceClassCheck = true;
+
         if (operator.getEquivalenceClasses() != null) {
             for (EquivalenceClass equivalenceClass : operator.getEquivalenceClasses()) {
-                if (equivalenceClass.hasExample())
-                    returnString = returnString + " " + equivalenceClass.getName() + " " + equivalenceClass.hasExample();
-                else
-                    returnString = returnString + " " + equivalenceClass.getName() + " false";
+                if(!equivalenceClass.hasExample()) {
+                    allEquivalenceClassCheck = false;
+                }
             }
-        } else
-            returnString = returnString + " " + operator.getOperatorName() + " eq not set";
-        return returnString;
+        }
+
+        return allEquivalenceClassCheck;
     }
 
 

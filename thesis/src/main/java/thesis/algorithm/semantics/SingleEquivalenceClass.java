@@ -17,7 +17,7 @@ public class SingleEquivalenceClass {
 	}
 
 	public SingleEquivalenceClass() {
-		this.singleExample = new EquivalenceClass("LoadExample");
+		this.singleExample = new EquivalenceClass("SingleOperatorExample");
 		this.singleEquivalenceClasses.add(singleExample);
 	}
 
