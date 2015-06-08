@@ -390,26 +390,25 @@ public class TupleGenerator {
     }
 
     public void pruneTuples() {
-        for (int ctr = operatorTree.size(); ctr > 0; ctr--) {
 
-            SingleOperator operator = this.operatorTree.get(ctr - 1);
-            if(operator.getEquivalenceClasses() != null) {
-                for (EquivalenceClass equivalenceClass : operator.getEquivalenceClasses()) {
-                    if (equivalenceClass.hasExample() && equivalenceClass.getExamples().size() > 1) {
-                        //remove one by one from upstream operators, while removing from upstream operator
-                        //check the equivalence class of that operator is still maintained and not empty
-                        for (int i = 0; i < operator.getOperatorOutputAsList().size(); i++) {
-                            Object exampleToPrune = operator.getOperatorOutputAsList().get(i);
-                            for (LinkedHashMap<SingleOperator, Object> recordTracer : this.lineageTracker.values()) {
-                                if (recordTracer.values().contains(exampleToPrune)) {
-                                    checkPruningIsOK(recordTracer);
-                                }
+        SingleOperator operator = this.operatorTree.get(this.operatorTree.size() - 1);
+        if (operator.getEquivalenceClasses() != null) {
+            for (EquivalenceClass equivalenceClass : operator.getEquivalenceClasses()) {
+                if (equivalenceClass.hasExample() && equivalenceClass.getExamples().size() > 1) {
+                    //remove one by one from upstream operators, while removing from upstream operator
+                    //check the equivalence class of that operator is still maintained and not empty
+                    for (int i = 0; i < operator.getOperatorOutputAsList().size(); i++) {
+                        Object exampleToPrune = operator.getOperatorOutputAsList().get(i);
+                        for (LinkedHashMap<SingleOperator, Object> recordTracer : this.lineageTracker.values()) {
+                            if (recordTracer.values().contains(exampleToPrune)) {
+                                checkPruningIsOK(recordTracer);
                             }
                         }
                     }
                 }
             }
         }
+
     }
 
     public void checkPruningIsOK(LinkedHashMap<SingleOperator, Object> recordTracer){
