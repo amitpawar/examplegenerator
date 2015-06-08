@@ -30,6 +30,15 @@ public class TupleGenerator {
     private Map<Integer,SingleOperator> operatorOrderMap = new HashMap<Integer, SingleOperator>();
     private Map<Object,LinkedHashMap<SingleOperator,Object>> lineageTracker = new HashMap<Object, LinkedHashMap<SingleOperator, Object>>();
     private int orderCounter = 0;
+    private static String dontCareString = "DONOTCAREWHATGOESHERE";
+    private static Integer dontCareInteger = -12345;
+    private static Long dontCareLong = Long.valueOf(-123456789);
+    private static Double dontCareDouble = -1.2345;
+    private static String joinKeyString = "JOINKEYISHERE";
+    private static Integer joinKeyInteger = -9999;
+    private static Long joinKeyLong = Long.valueOf(-99999999);
+    private static Double joinKeyDouble = -9.9999;
+
 
 
     public TupleGenerator(List<InputDataSource> dataSources,
@@ -85,7 +94,8 @@ public class TupleGenerator {
 
                 List inputList = new ArrayList();
                 Random randomGenerator = new Random();
-                inputList.add(returnRandomTuple(operator.getParentOperators().get(0).getOperatorOutputAsList(), randomGenerator));
+                if(!operator.getParentOperators().get(0).getOperatorOutputAsList().isEmpty())
+                    inputList.add(returnRandomTuple(operator.getParentOperators().get(0).getOperatorOutputAsList(), randomGenerator));
                 List output = ((SingleInputOperator) operator.getOperator()).executeOnCollections(inputList, null, this.env.getConfig());
 
 
@@ -94,8 +104,8 @@ public class TupleGenerator {
                 else
                     operator.setOperatorOutputAsList(output);
 
-
-                addToLineageTracer(output.get(0), operator, output.get(0));
+                if(!output.isEmpty())
+                    addToLineageTracer(output.get(0), operator, output.get(0));
 
                 this.operatorOrderMap.put(this.orderCounter++, operator);
 
@@ -310,9 +320,9 @@ public class TupleGenerator {
         String[] tokens = new String[totalFields];
         for (int i = 0; i < totalFields; i++) {
             if (i == keyColumn) {
-                tokens[i] = "JOINKEY";
+                tokens[i] = this.joinKeyString;
             } else
-                tokens[i] = "DONTCARE";
+                tokens[i] = this.dontCareString;
         }
         return tokens;
     }
@@ -321,7 +331,7 @@ public class TupleGenerator {
         int totalFields = typeInformation.getTotalFields();
         String[] tokens = new String[totalFields];
         for (int i = 0; i < totalFields; i++) {
-            tokens[i] = "DONTCARE";
+            tokens[i] = this.dontCareString;
         }
         return tokens;
     }
@@ -337,14 +347,20 @@ public class TupleGenerator {
             loadOperatorWithUnUsedExamples.put(child, unUsedExamplesAtLeaf);
             //Tuple constraintRecord = child.getConstraintRecords();
             for (int i = 0; i < constraintRecord.getArity(); i++) {
-                if (constraintRecord.getField(i) == "JOINKEY") {
+                if (constraintRecord.getField(i) == this.joinKeyString ||
+                        constraintRecord.getField(i) == this.joinKeyInteger ||
+                        constraintRecord.getField(i) == this.joinKeyLong ||
+                        constraintRecord.getField(i) == this.joinKeyDouble) {
                     Random random = new Random();
                     //todo recheck with multi joins
                     if (this.joinKey == null)
                         this.joinKey = ((Tuple) returnRandomTuple(unUsedExamplesAtLeaf, random)).getField(i);
                     constraintRecord.setField(this.joinKey, i);
                 }
-                if (constraintRecord.getField(i) == "DONTCARE") {
+                if (constraintRecord.getField(i) == this.dontCareString ||
+                        constraintRecord.getField(i) == this.dontCareDouble ||
+                        constraintRecord.getField(i) == this.dontCareLong ||
+                        constraintRecord.getField(i) == this.dontCareInteger) {
                     Random random = new Random();
                     Object randomValue = ((Tuple) returnRandomTuple(unUsedExamplesAtLeaf, random)).getField(i);
                     constraintRecord.setField(randomValue, i);
@@ -416,7 +432,8 @@ public class TupleGenerator {
         for(int i = 1; i <= operatorList.size();i++){
             SingleOperator operator = operatorList.get(operatorList.size()-i);
             Object exampleUnderScrutiny = recordTracer.get(operator);
-            operator.getOperatorOutputAsList().remove(exampleUnderScrutiny);
+            //remove all instances of the example from the operator
+            operator.getOperatorOutputAsList().removeAll(Collections.singleton(exampleUnderScrutiny));
             setOperatorEquivalenceClassess(operator);
             if(!checkEquivalenceClasses(operator))
                 operator.getOperatorOutputAsList().add(exampleUnderScrutiny);
@@ -569,41 +586,35 @@ public class TupleGenerator {
                 valueSetTuple.setField(drillToBasicType(((CompositeType) typeInformation).getTypeAt(ctr), tokens), ctr);
 
             else {
-                valueSetTuple.setField(tokens.get(0), ctr);
-                tokens.remove(tokens.get(0));
-                /*if (name.equalsIgnoreCase("String"))
-                    valueSetTuple.setField(name, ctr);
-                if (name.equalsIgnoreCase("Long")) {
-                    long someValue = -9999;
-                    valueSetTuple.setField(someValue, ctr);
+                String name = ((CompositeType) typeInformation).getTypeAt(ctr).toString();
 
-                }*/
+                //valueSetTuple.setField(tokens.get(0), ctr);
+                //tokens.remove(tokens.get(0));
+                if(tokens.get(0) == this.dontCareString) {
+                    if (name.equalsIgnoreCase("String"))
+                        valueSetTuple.setField(this.dontCareString, ctr);
+                    if (name.equalsIgnoreCase("Long"))
+                        valueSetTuple.setField(this.dontCareLong, ctr);
+                    if (name.equalsIgnoreCase("Integer"))
+                        valueSetTuple.setField(this.dontCareInteger, ctr);
+                    if (name.equalsIgnoreCase("Double"))
+                        valueSetTuple.setField(this.dontCareDouble, ctr);
+                }
+                if(tokens.get(0) == this.joinKeyString){
+                    if (name.equalsIgnoreCase("String"))
+                        valueSetTuple.setField(this.joinKeyString, ctr);
+                    if (name.equalsIgnoreCase("Long"))
+                        valueSetTuple.setField(this.joinKeyLong, ctr);
+                    if (name.equalsIgnoreCase("Integer"))
+                        valueSetTuple.setField(this.joinKeyInteger, ctr);
+                    if (name.equalsIgnoreCase("Double"))
+                        valueSetTuple.setField(this.joinKeyDouble, ctr);
+                }
+                tokens.remove(tokens.get(0));
+
             }
         }
         return valueSetTuple;
     }
-
-
-
-
-
-
-    /////////////////////////////
-
-    public static class TupleFilter extends RichFilterFunction {
-
-        private Collection<?> sampleSet;
-
-        @Override
-        public void open(Configuration parameters) throws Exception {
-            this.sampleSet = getRuntimeContext().getBroadcastVariable("filterset");
-        }
-
-        @Override
-        public boolean filter(Object arg0) throws Exception {
-            return !sampleSet.contains(arg0);
-        }
-    }
-
 
 }
