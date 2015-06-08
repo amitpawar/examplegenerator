@@ -73,7 +73,7 @@ public class SampleTest {
 		
 		
 		DataSet<Tuple2<String, String>> visitSet = visits.flatMap(
-				new VisitsReader());//.distinct();
+				new VisitsReader()).distinct();
 		dataSets.add(visitSet);
 		InputDataSource input1 = new InputDataSource();
 		input1.setDataSet(visitSet);
@@ -82,8 +82,7 @@ public class SampleTest {
 		
 		//DataSet<Visits> visitSet = visits.flatMap(new VisitsPOJAReader());
 
-		DataSet<Tuple2<String, Long>> urlSet = urls.flatMap(new URLsReader());
-				//.distinct();
+		DataSet<Tuple2<String, Long>> urlSet = urls.flatMap(new URLsReader()).distinct();
 		dataSets.add(urlSet);
 		InputDataSource input2 = new InputDataSource();
 		input2.setDataSet(urlSet);
@@ -127,7 +126,7 @@ public class SampleTest {
 		//printSet.writeAsCsv(Config.outputPath()+"/" + SampleTest.class.getName(), WriteMode.OVERWRITE);
 		OperatorTree tree = new OperatorTree(env, dataSources );
 		//tree.createOperatorTree();
-		TupleGenerator tg = new TupleGenerator(dataSources, tree.createOperatorTree(), env,4);
+		TupleGenerator tg = new TupleGenerator(dataSources, tree.createOperatorTree(), env,2);
 		//tg.generateTuplesTest(env, dataSets, tree.createOperatorTree());
 		//printSet.writeAsCsv(Config.outputPath()+"/" + SampleTest.class.getName(), WriteMode.OVERWRITE); //to print result of main program
 		//env.execute();

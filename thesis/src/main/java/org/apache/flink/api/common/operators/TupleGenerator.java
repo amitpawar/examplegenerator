@@ -299,6 +299,7 @@ public class TupleGenerator {
         operator.getParentOperators().get(0).getOperatorOutputAsList().add(parent1Tuple);
         operator.getParentOperators().get(0).setConstraintRecords(parent1Tuple);
         this.operatorToConstraintRecordMap.put(operator.getParentOperators().get(0), parent1Tuple);
+        //propagate this record till load/leaf
         propagateConstraintRecordUpstream(operator.getParentOperators().get(0), parent1Tuple, operator);
 
         String[] secondTokens = constructJoinConstraintTokens(joinCondition, operator.getParentOperators().get(1).getOperatorOutputType(), 1);
@@ -345,7 +346,7 @@ public class TupleGenerator {
            // System.out.println("UNUSED-----");
             List unUsedExamplesAtLeaf = getUnusedExamplesFromBaseTable(parent, child, child.getOperatorOutputAsList());
             loadOperatorWithUnUsedExamples.put(child, unUsedExamplesAtLeaf);
-            //Tuple constraintRecord = child.getConstraintRecords();
+
             for (int i = 0; i < constraintRecord.getArity(); i++) {
                 if (constraintRecord.getField(i) == this.joinKeyString ||
                         constraintRecord.getField(i) == this.joinKeyInteger ||
@@ -396,12 +397,15 @@ public class TupleGenerator {
                     parent.setConstraintRecords(constraintRecord);
                     this.operatorToConstraintRecordMap.put(parent, constraintRecord);
                 }
+
                 parent.getOperatorOutputAsList().add(constraintRecord);
                 parent.setConstraintRecords(constraintRecord);
                 this.operatorToConstraintRecordMap.put(parent, constraintRecord);
                 //parent is LOAD, once load is reached change to concrete
                 convertConstraintRecordToConcreteRecord(parent, constraintRecord, operatorWithEmptyEqClass);
             }
+            //if childOperator itself is load
+            convertConstraintRecordToConcreteRecord(childOperator, constraintRecord, operatorWithEmptyEqClass);
         }
     }
 
