@@ -126,7 +126,7 @@ public class SampleTest {
 		//printSet.writeAsCsv(Config.outputPath()+"/" + SampleTest.class.getName(), WriteMode.OVERWRITE);
 		OperatorTree tree = new OperatorTree(env, dataSources );
 		//tree.createOperatorTree();
-		TupleGenerator tg = new TupleGenerator(dataSources, tree.createOperatorTree(), env,2);
+		TupleGenerator tg = new TupleGenerator(dataSources, tree.createOperatorTree(), env,4);
 		//tg.generateTuplesTest(env, dataSets, tree.createOperatorTree());
 		//printSet.writeAsCsv(Config.outputPath()+"/" + SampleTest.class.getName(), WriteMode.OVERWRITE); //to print result of main program
 		//env.execute();

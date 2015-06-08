@@ -2,6 +2,7 @@ package org.apache.flink.api.common.operators;
 
 import java.util.*;
 
+import com.google.common.base.Strings;
 import com.google.common.collect.Lists;
 import org.apache.flink.api.common.functions.RichFilterFunction;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
@@ -21,15 +22,12 @@ import thesis.input.operatortree.SingleOperator.JUCCondition;
 
 public class TupleGenerator {
 
-    private List<InputDataSource> dataSources;
     private List<SingleOperator> operatorTree;
     private ExecutionEnvironment env;
     private Map<SingleOperator, Tuple> operatorToConstraintRecordMap = new HashMap<SingleOperator, Tuple>();
     private Object joinKey = null;
     private int maxRecords = -1;
-    private Map<Integer,SingleOperator> operatorOrderMap = new HashMap<Integer, SingleOperator>();
     private Map<Object,LinkedHashMap<SingleOperator,Object>> lineageTracker = new HashMap<Object, LinkedHashMap<SingleOperator, Object>>();
-    private int orderCounter = 0;
     private static String dontCareString = "DONOTCAREWHATGOESHERE";
     private static Integer dontCareInteger = -12345;
     private static Long dontCareLong = Long.valueOf(-123456789);
@@ -43,21 +41,20 @@ public class TupleGenerator {
 
     public TupleGenerator(List<InputDataSource> dataSources,
                           List<SingleOperator> operatorTree, ExecutionEnvironment env, int maxRecords) throws Exception {
-        this.dataSources = dataSources;
         this.operatorTree = operatorTree;
         this.env = env;
         this.maxRecords = maxRecords;
         downStreamPass(this.operatorTree);
         setEquivalenceClasses();
-        System.out.println("After Downstream-----------------");
+        System.out.println("After Downstream"+ Strings.repeat("-",200));
         displayExamples(this.operatorTree);
         upStreamPass(this.operatorTree);
         afterUpstreampass(this.operatorTree);
         setEquivalenceClasses();
-        System.out.println("After Upstream-----------------");
+        System.out.println("After Upstream"+ Strings.repeat("-",200));
         displayExamples(this.operatorTree);
         pruneTuples();
-        System.out.println("After Pruning-----------------");
+        System.out.println("After Pruning"+ Strings.repeat("-",200));
         displayExamples(this.operatorTree);
 
     }
@@ -107,8 +104,6 @@ public class TupleGenerator {
                 if(!output.isEmpty())
                     addToLineageTracer(output.get(0), operator, output.get(0));
 
-                this.operatorOrderMap.put(this.orderCounter++, operator);
-
             }
             else {
                 List output = executeIndividualOperator(operator);
@@ -119,8 +114,6 @@ public class TupleGenerator {
                     operator.getOperatorOutputAsList().addAll(output);
                 } else
                     operator.setOperatorOutputAsList(output);
-
-                this.operatorOrderMap.put(this.orderCounter++, operator);
 
             }
 
