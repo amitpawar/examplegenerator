@@ -600,22 +600,39 @@ public class TupleGenerator {
         if (operator.getOperatorType() == OperatorType.UNION || operator.getOperatorType() == OperatorType.CROSS){
             List firstParentExamples = operator.getParentOperators().get(0).getOperatorOutputAsList();
             List secondParentExamples = operator.getParentOperators().get(1).getOperatorOutputAsList();
+            List operatorOutput = operator.getOperatorOutputAsList();
             UnionCrossEquivalenceClasses unionCrossEquivalenceClasses = new UnionCrossEquivalenceClasses();
 
-            if(!firstParentExamples.isEmpty()) {
-                unionCrossEquivalenceClasses.getFirstTableExample().setHasExample(true);
-                unionCrossEquivalenceClasses.getFirstTableExample().setExamples(firstParentExamples);
-            }
-            else
-                unionCrossEquivalenceClasses.getFirstTableExample().setHasExample(false);
+            if(!operatorOutput.isEmpty()) {
+                if (!firstParentExamples.isEmpty()) {
+                    List parentExamples = new ArrayList();
+                    for(Object firstParentExample : firstParentExamples){
+                        if(operatorOutput.contains(firstParentExample)){
+                            unionCrossEquivalenceClasses.getFirstTableExample().setHasExample(true);
+                            parentExamples.add(firstParentExample);
+                        }
+                    }
+                    if(parentExamples.isEmpty())
+                        unionCrossEquivalenceClasses.getFirstTableExample().setHasExample(false);
 
-            if(!secondParentExamples.isEmpty()) {
-                unionCrossEquivalenceClasses.getSecondTableExample().setHasExample(true);
-                unionCrossEquivalenceClasses.getSecondTableExample().setExamples(secondParentExamples);
-            }
-            else
-                unionCrossEquivalenceClasses.getSecondTableExample().setHasExample(false);
+                    unionCrossEquivalenceClasses.getFirstTableExample().setExamples(parentExamples);
+                }
 
+                if(!secondParentExamples.isEmpty()){
+                    List parentExamples = new ArrayList();
+                    for(Object secondParentExample : secondParentExamples){
+                        if(operatorOutput.contains(secondParentExample)){
+                            unionCrossEquivalenceClasses.getSecondTableExample().setHasExample(true);
+                            parentExamples.add(secondParentExample);
+                        }
+                    }
+                    if(parentExamples.isEmpty())
+                        unionCrossEquivalenceClasses.getSecondTableExample().setHasExample(false);
+
+                    unionCrossEquivalenceClasses.getSecondTableExample().setExamples(parentExamples);
+                }
+
+            }
             List<EquivalenceClass> equivalenceClasses = new ArrayList<EquivalenceClass>();
             equivalenceClasses.add(unionCrossEquivalenceClasses.getFirstTableExample());
             equivalenceClasses.add(unionCrossEquivalenceClasses.getSecondTableExample());
@@ -632,11 +649,13 @@ public class TupleGenerator {
 
         if (operator.getEquivalenceClasses() != null) {
             for (EquivalenceClass equivalenceClass : operator.getEquivalenceClasses()) {
-                if(!equivalenceClass.hasExample()) {
+                if(!equivalenceClass.hasExample() || equivalenceClass.getExamples().size() < 1) {
                     allEquivalenceClassCheck = false;
                 }
             }
         }
+       /* if(operator.getEquivalenceClasses() == null)
+            allEquivalenceClassCheck = false;*/
 
         return allEquivalenceClassCheck;
     }
