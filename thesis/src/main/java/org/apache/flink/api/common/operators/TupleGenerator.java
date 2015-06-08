@@ -346,28 +346,29 @@ public class TupleGenerator {
            // System.out.println("UNUSED-----");
             List unUsedExamplesAtLeaf = getUnusedExamplesFromBaseTable(parent, child, child.getOperatorOutputAsList());
             loadOperatorWithUnUsedExamples.put(child, unUsedExamplesAtLeaf);
+            if(!unUsedExamplesAtLeaf.isEmpty()) {
+                for (int i = 0; i < constraintRecord.getArity(); i++) {
+                    if (constraintRecord.getField(i) == this.joinKeyString ||
+                            constraintRecord.getField(i) == this.joinKeyInteger ||
+                            constraintRecord.getField(i) == this.joinKeyLong ||
+                            constraintRecord.getField(i) == this.joinKeyDouble) {
+                        Random random = new Random();
+                        //todo recheck with multi joins
+                        if (this.joinKey == null)
+                            this.joinKey = ((Tuple) returnRandomTuple(unUsedExamplesAtLeaf, random)).getField(i);
+                        constraintRecord.setField(this.joinKey, i);
+                    }
+                    if (constraintRecord.getField(i) == this.dontCareString ||
+                            constraintRecord.getField(i) == this.dontCareDouble ||
+                            constraintRecord.getField(i) == this.dontCareLong ||
+                            constraintRecord.getField(i) == this.dontCareInteger) {
+                        Random random = new Random();
+                        Object randomValue = ((Tuple) returnRandomTuple(unUsedExamplesAtLeaf, random)).getField(i);
+                        constraintRecord.setField(randomValue, i);
 
-            for (int i = 0; i < constraintRecord.getArity(); i++) {
-                if (constraintRecord.getField(i) == this.joinKeyString ||
-                        constraintRecord.getField(i) == this.joinKeyInteger ||
-                        constraintRecord.getField(i) == this.joinKeyLong ||
-                        constraintRecord.getField(i) == this.joinKeyDouble) {
-                    Random random = new Random();
-                    //todo recheck with multi joins
-                    if (this.joinKey == null)
-                        this.joinKey = ((Tuple) returnRandomTuple(unUsedExamplesAtLeaf, random)).getField(i);
-                    constraintRecord.setField(this.joinKey, i);
+                    }
+
                 }
-                if (constraintRecord.getField(i) == this.dontCareString ||
-                        constraintRecord.getField(i) == this.dontCareDouble ||
-                        constraintRecord.getField(i) == this.dontCareLong ||
-                        constraintRecord.getField(i) == this.dontCareInteger) {
-                    Random random = new Random();
-                    Object randomValue = ((Tuple) returnRandomTuple(unUsedExamplesAtLeaf, random)).getField(i);
-                    constraintRecord.setField(randomValue, i);
-
-                }
-
             }
            // System.out.println("-------------------Changed Constraint Record-----------" + constraintRecord);
             // child.getOperatorOutputAsList().add(constraintRecord);
@@ -409,19 +410,24 @@ public class TupleGenerator {
         }
     }
 
-    public void pruneTuples() {
+    public void pruneTuples() throws Exception {
 
-        SingleOperator operator = this.operatorTree.get(this.operatorTree.size() - 1);
-        if (operator.getEquivalenceClasses() != null) {
-            for (EquivalenceClass equivalenceClass : operator.getEquivalenceClasses()) {
-                if (equivalenceClass.hasExample() && equivalenceClass.getExamples().size() > 1) {
-                    //remove one by one from upstream operators, while removing from upstream operator
-                    //check the equivalence class of that operator is still maintained and not empty
-                    for (int i = 0; i < operator.getOperatorOutputAsList().size(); i++) {
-                        Object exampleToPrune = operator.getOperatorOutputAsList().get(i);
-                        for (LinkedHashMap<SingleOperator, Object> recordTracer : this.lineageTracker.values()) {
-                            if (recordTracer.values().contains(exampleToPrune)) {
-                                checkPruningIsOK(recordTracer);
+        for (int ctr = operatorTree.size(); ctr > 0; ctr--) {
+
+            SingleOperator operator = operatorTree.get(ctr - 1);
+
+            //not source
+            if (operator.getEquivalenceClasses() != null) {
+                for (EquivalenceClass equivalenceClass : operator.getEquivalenceClasses()) {
+                    if (equivalenceClass.hasExample() && equivalenceClass.getExamples().size() > 1) {
+                        //remove one by one from upstream operators, while removing from upstream operator
+                        //check the equivalence class of that operator is still maintained and not empty
+                        for (int i = 0; i < operator.getOperatorOutputAsList().size(); i++) {
+                            Object exampleToPrune = operator.getOperatorOutputAsList().get(i);
+                            for (LinkedHashMap<SingleOperator, Object> recordTracer : this.lineageTracker.values()) {
+                                if (recordTracer.values().contains(exampleToPrune)) {
+                                        checkPruningIsOK(recordTracer);
+                                }
                             }
                         }
                     }
@@ -431,17 +437,87 @@ public class TupleGenerator {
 
     }
 
-    public void checkPruningIsOK(LinkedHashMap<SingleOperator, Object> recordTracer){
+    public void checkPruningIsOK(LinkedHashMap<SingleOperator, Object> recordTracer) throws Exception {
         LinkedList<SingleOperator> operatorList = new LinkedList<SingleOperator>(recordTracer.keySet());
         for(int i = 1; i <= operatorList.size();i++){
+            SingleOperator followingOperator = null;
             SingleOperator operator = operatorList.get(operatorList.size()-i);
+            if(i != 1)
+                followingOperator = operatorList.get(operatorList.size() - i + 1);
+
             Object exampleUnderScrutiny = recordTracer.get(operator);
             //remove all instances of the example from the operator
             operator.getOperatorOutputAsList().removeAll(Collections.singleton(exampleUnderScrutiny));
             setOperatorEquivalenceClassess(operator);
-            if(!checkEquivalenceClasses(operator))
-                operator.getOperatorOutputAsList().add(exampleUnderScrutiny);
+            if(followingOperator !=  null) {
+                if (!checkEquivalenceClasses(operator) || !checkFollowingOperatorsEquivalenceClasses(operator, followingOperator, exampleUnderScrutiny))
+                    operator.getOperatorOutputAsList().add(exampleUnderScrutiny);
+
+            }
+            else
+                if(!checkEquivalenceClasses(operator))
+                    operator.getOperatorOutputAsList().add(exampleUnderScrutiny);
         }
+    }
+
+    public boolean checkFollowingOperatorsEquivalenceClasses(SingleOperator operator, SingleOperator followingOperator,Object exampleUnderScrutiny) throws Exception {
+        if(followingOperator != null) {
+            Operator operatorToConsider = followingOperator.getOperator();
+            List input1 = new ArrayList();
+            List input2 = new ArrayList();
+            List output = new ArrayList();
+            List prevOutput = followingOperator.getOperatorOutputAsList();
+
+            for (int i = 0; i < followingOperator.getParentOperators().size(); i++) {
+                SingleOperator parent = followingOperator.getParentOperators().get(i);
+                if (parent == operator) {
+                    if (i == 0) {
+                        input1 = parent.getOperatorOutputAsList();
+                    }
+                    if (i == 1) {
+                        input2 = parent.getOperatorOutputAsList();
+                    }
+                }
+            }
+
+            if (operatorToConsider instanceof DualInputOperator) {
+                if (input1.isEmpty())
+                    input1 = followingOperator.getParentOperators().get(0).getOperatorOutputAsList();
+                if (input2.isEmpty())
+                    input2 = followingOperator.getParentOperators().get(1).getOperatorOutputAsList();
+
+                output = ((DualInputOperator) operatorToConsider).executeOnCollections(input1, input2, null, this.env.getConfig());
+            }
+
+            if (operatorToConsider instanceof SingleInputOperator) {
+                if (input1.isEmpty())
+                    input1 = followingOperator.getParentOperators().get(0).getOperatorOutputAsList();
+
+                output = ((SingleInputOperator) operatorToConsider).executeOnCollections(input1, null, this.env.getConfig());
+            }
+
+            followingOperator.setOperatorOutputAsList(output);
+            setOperatorEquivalenceClassess(followingOperator);
+            if (!checkEquivalenceClasses(followingOperator) || !checkFollowingOperatorsEquivalenceClasses(followingOperator, getFollowingOperator(followingOperator), exampleUnderScrutiny)) {
+                followingOperator.setOperatorOutputAsList(prevOutput);
+                return false;
+            } else
+                return true;
+        }
+        return (checkEquivalenceClasses(operator));
+
+    }
+
+    public SingleOperator getFollowingOperator(SingleOperator prevOperator){
+        for(int i = 0; i < this.operatorTree.size(); i++){
+            if(this.operatorTree.get(i).getOperatorType() != OperatorType.SOURCE) {
+                for(SingleOperator parent : this.operatorTree.get(i).getParentOperators()){
+                    if(parent == prevOperator)
+                        return this.operatorTree.get(i);
+                }
+            }
+        }
+        return null;
     }
 
 
