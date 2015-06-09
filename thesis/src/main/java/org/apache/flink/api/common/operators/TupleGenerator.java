@@ -270,7 +270,7 @@ public class TupleGenerator {
         operator.getParentOperators().get(parentId).getOperatorOutputAsList().add(parentTuple);
         operator.getParentOperators().get(parentId).setConstraintRecords(parentTuple);
         this.operatorToConstraintRecordMap.put(operator.getParentOperators().get(parentId), parentTuple);
-        propagateConstraintRecordUpstream(operator.getParentOperators().get(parentId), parentTuple, operator);
+        propagateConstraintRecordUpstream(operator.getParentOperators().get(parentId), parentTuple);
 
 
     }
@@ -287,7 +287,7 @@ public class TupleGenerator {
         operator.getParentOperators().get(0).setConstraintRecords(parent1Tuple);
         this.operatorToConstraintRecordMap.put(operator.getParentOperators().get(0), parent1Tuple);
         //propagate this record till load/leaf
-        propagateConstraintRecordUpstream(operator.getParentOperators().get(0), parent1Tuple, operator);
+        propagateConstraintRecordUpstream(operator.getParentOperators().get(0), parent1Tuple);
 
         String[] secondTokens = constructJoinConstraintTokens(joinCondition, operator.getParentOperators().get(1).getOperatorOutputType(), 1);
         Tuple parent2Tuple = getConstraintRecord(operator.getParentOperators().get(1),
@@ -295,7 +295,7 @@ public class TupleGenerator {
         operator.getParentOperators().get(1).getOperatorOutputAsList().add(parent2Tuple);
         operator.getParentOperators().get(1).setConstraintRecords(parent2Tuple);
         this.operatorToConstraintRecordMap.put(operator.getParentOperators().get(1), parent2Tuple);
-        propagateConstraintRecordUpstream(operator.getParentOperators().get(1), parent2Tuple, operator);
+        propagateConstraintRecordUpstream(operator.getParentOperators().get(1), parent2Tuple);
         this.joinKey = null;
     }
 
@@ -324,7 +324,7 @@ public class TupleGenerator {
         return tokens;
     }
 
-    public void convertConstraintRecordToConcreteRecord(SingleOperator child, Tuple constraintRecord, SingleOperator operatorWithEmptyEqClass) throws Exception {
+    public void convertConstraintRecordToConcreteRecord(SingleOperator child, Tuple constraintRecord) throws Exception {
         //child = leaf , parent = basetable
         Map<SingleOperator, List> loadOperatorWithUnUsedExamples = new LinkedHashMap<SingleOperator, List>();
         SingleOperator parent = child.getParentOperators().get(0);
@@ -376,7 +376,7 @@ public class TupleGenerator {
     }
 
     //child operator is parent of operator with empty eq class
-    public void propagateConstraintRecordUpstream(SingleOperator childOperator, Tuple constraintRecord, SingleOperator operatorWithEmptyEqClass) throws Exception {
+    public void propagateConstraintRecordUpstream(SingleOperator childOperator, Tuple constraintRecord) throws Exception {
         for (SingleOperator parent : childOperator.getParentOperators()) {
             if (childOperator.getOperatorType() != OperatorType.LOAD) {
                 while (parent.getOperatorType() != OperatorType.LOAD) {
@@ -390,10 +390,10 @@ public class TupleGenerator {
                 parent.setConstraintRecords(constraintRecord);
                 this.operatorToConstraintRecordMap.put(parent, constraintRecord);
                 //parent is LOAD, once load is reached change to concrete
-                convertConstraintRecordToConcreteRecord(parent, constraintRecord, operatorWithEmptyEqClass);
+                convertConstraintRecordToConcreteRecord(parent, constraintRecord);
             }
             //if childOperator itself is load
-            convertConstraintRecordToConcreteRecord(childOperator, constraintRecord, operatorWithEmptyEqClass);
+            convertConstraintRecordToConcreteRecord(childOperator, constraintRecord);
         }
     }
 
@@ -421,7 +421,6 @@ public class TupleGenerator {
                 }
             }
         }
-
     }
 
     public void checkPruningIsOK(LinkedHashMap<SingleOperator, Object> recordTracer) throws Exception {
