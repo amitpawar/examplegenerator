@@ -50,7 +50,7 @@ public class DifferentUsersUnifiedLog {
 		
 		groupedFilteredSet.writeAsCsv(Config.outputPath()+"/"+DifferentUsersUnifiedLog.class.getName(),WriteMode.OVERWRITE);
 
-		OperatorTree tree = new OperatorTree(env, inputSources);
+		OperatorTree tree = new OperatorTree(env);
 		//tree.createOperatorTree();
 		TupleGenerator tg = new TupleGenerator(inputSources, tree.createOperatorTree(), env,2);
 		//env.execute();

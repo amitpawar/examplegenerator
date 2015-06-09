@@ -14,19 +14,11 @@ public class SingleOperator {
 
     private String name;
     private OperatorType operatorType;
-    private String previousOperator;
-    private OperatorType previousOperatorType;
     private TypeInformation<?> operatorOutputType;
-    private List<TypeInformation<?>> operatorInputType;
     private JUCCondition jucCondition;
     private Operator<?> operator;
-    private List<Integer> operatorInputDataSetId;
-    private List<DataSet<?>> operatorDataSets;
-    private DataSet<?> outputExampleTuples;
-    private int[] projectColumns;
     private List<EquivalenceClass> equivalenceClasses;
     private List<SingleOperator> parentOperators;
-    private int outputDataSetId;
     private List operatorOutputAsList;
     private Tuple constraintRecords;
 
@@ -51,22 +43,6 @@ public class SingleOperator {
     }
 
 
-    public int getOutputDataSetId() {
-        return outputDataSetId;
-    }
-
-    public void setOutputDataSetId(int outputDataSetId) {
-        this.outputDataSetId = outputDataSetId;
-    }
-
-    public List<Integer> getOperatorInputDataSetId() {
-        return operatorInputDataSetId;
-    }
-
-    public void setOperatorInputDataSetId(List<Integer> operatorInputDataSetId) {
-        this.operatorInputDataSetId = operatorInputDataSetId;
-    }
-
     public List<SingleOperator> getParentOperators() {
         return parentOperators;
     }
@@ -84,30 +60,6 @@ public class SingleOperator {
         this.equivalenceClasses = equivalenceClasses;
     }
 
-    public int[] getProjectColumns() {
-        return projectColumns;
-    }
-
-    public void setProjectColumns(int[] projectColumns) {
-        this.projectColumns = projectColumns;
-    }
-
-    public DataSet<?> getOutputExampleTuples() {
-        return outputExampleTuples;
-    }
-
-    public void setOutputExampleTuples(DataSet<?> outputExampleTuples) {
-        this.outputExampleTuples = outputExampleTuples;
-    }
-
-    public List<DataSet<?>> getOperatorDataSets() {
-        return operatorDataSets;
-    }
-
-    public void setOperatorDataSets(List<DataSet<?>> operatorDataSets) {
-        this.operatorDataSets = operatorDataSets;
-    }
-
     public Operator<?> getOperator() {
         return operator;
     }
@@ -116,20 +68,12 @@ public class SingleOperator {
         this.operator = operator;
     }
 
-    public JUCCondition getJUCCondition() {
+   public JUCCondition getJUCCondition() {
         return jucCondition;
     }
 
     public void setJUCCondition(JUCCondition joinCondition) {
         this.jucCondition = joinCondition;
-    }
-
-    public List<TypeInformation<?>> getOperatorInputType() {
-        return operatorInputType;
-    }
-
-    public void setOperatorInputType(List<TypeInformation<?>> operatorInputType) {
-        this.operatorInputType = operatorInputType;
     }
 
     public TypeInformation<?> getOperatorOutputType() {
@@ -148,13 +92,6 @@ public class SingleOperator {
         this.name = name;
     }
 
-    public String getPreviousOperatorName(){
-        return this.previousOperator;
-    }
-
-    public void setPreviousOperatorName(String name){
-        this.previousOperator = name;
-    }
 
     public OperatorType getOperatorType(){
         return this.operatorType;
@@ -164,13 +101,6 @@ public class SingleOperator {
         this.operatorType = type;
     }
 
-    public OperatorType getPreviousOperatorType(){
-        return this.previousOperatorType;
-    }
-
-    public void setPreviousOperatorType(OperatorType type){
-        this.previousOperatorType = type;
-    }
 
 
     public class JUCCondition {

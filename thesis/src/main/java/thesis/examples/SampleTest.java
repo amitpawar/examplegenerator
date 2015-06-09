@@ -124,9 +124,9 @@ public class SampleTest {
 		printSet.print();  //datasink needed
 
 		//printSet.writeAsCsv(Config.outputPath()+"/" + SampleTest.class.getName(), WriteMode.OVERWRITE);
-		OperatorTree tree = new OperatorTree(env, dataSources );
+		OperatorTree tree = new OperatorTree(env );
 		//tree.createOperatorTree();
-		TupleGenerator tg = new TupleGenerator(dataSources, tree.createOperatorTree(), env,4);
+		TupleGenerator tg = new TupleGenerator(dataSources, tree.createOperatorTree(), env,1);
 		//tg.generateTuplesTest(env, dataSets, tree.createOperatorTree());
 		//printSet.writeAsCsv(Config.outputPath()+"/" + SampleTest.class.getName(), WriteMode.OVERWRITE); //to print result of main program
 		//env.execute();

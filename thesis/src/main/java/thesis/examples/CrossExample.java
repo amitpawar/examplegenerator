@@ -44,7 +44,7 @@ public class CrossExample {
                 .projectFirst(1).projectSecond(0).projectSecond(1);
 
         crossSet.print();
-        OperatorTree tree = new OperatorTree(env,dataSources);
+        OperatorTree tree = new OperatorTree(env);
         TupleGenerator tg = new TupleGenerator(dataSources,tree.createOperatorTree(),env,2);
         //env.execute();
 

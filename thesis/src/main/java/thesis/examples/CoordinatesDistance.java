@@ -48,7 +48,7 @@ public class CoordinatesDistance {
 				set1.cross(set2).with(new EuclideanDistComputer());
 		
 		distances.print();
-        OperatorTree operatorTree = new OperatorTree(env,dataSources);
+        OperatorTree operatorTree = new OperatorTree(env);
         TupleGenerator tg = new TupleGenerator(dataSources,operatorTree.createOperatorTree(),env,2);
 		
 		//env.execute();
