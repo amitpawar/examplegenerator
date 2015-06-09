@@ -15,7 +15,6 @@ import thesis.algorithm.semantics.EquivalenceClass;
 import thesis.algorithm.semantics.JoinEquivalenceClasses;
 import thesis.algorithm.semantics.SingleEquivalenceClass;
 import thesis.algorithm.semantics.UnionCrossEquivalenceClasses;
-import thesis.input.datasources.InputDataSource;
 import thesis.input.operatortree.SingleOperator;
 import thesis.input.operatortree.OperatorType;
 import thesis.input.operatortree.SingleOperator.JUCCondition;
