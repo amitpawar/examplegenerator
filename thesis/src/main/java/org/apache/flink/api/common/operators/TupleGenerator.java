@@ -39,8 +39,7 @@ public class TupleGenerator {
 
 
 
-    public TupleGenerator(List<InputDataSource> dataSources,
-                          List<SingleOperator> operatorTree, ExecutionEnvironment env, int maxRecords) throws Exception {
+    public TupleGenerator(List<SingleOperator> operatorTree, ExecutionEnvironment env, int maxRecords) throws Exception {
         this.operatorTree = operatorTree;
         this.env = env;
         this.maxRecords = maxRecords;

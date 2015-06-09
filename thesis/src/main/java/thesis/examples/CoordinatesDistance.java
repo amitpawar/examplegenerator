@@ -13,7 +13,6 @@ import org.apache.flink.api.java.ExecutionEnvironment;
 import org.apache.flink.api.java.operators.DataSource;
 import org.apache.flink.api.java.tuple.Tuple3;
 import org.apache.flink.util.Collector;
-import thesis.input.datasources.InputDataSource;
 import thesis.input.operatortree.OperatorTree;
 
 
@@ -21,7 +20,7 @@ public class CoordinatesDistance {
 
 	public static void main(String[] args) throws Exception {
 
-        List<InputDataSource> dataSources = new ArrayList<InputDataSource>();
+
 		ExecutionEnvironment env = ExecutionEnvironment
 				.getExecutionEnvironment();
 
@@ -31,25 +30,17 @@ public class CoordinatesDistance {
 				.pathToCoordSet2());
 
 		DataSet<Coord> set1 = coordSet1.flatMap(new CoordsReader());
-        InputDataSource inputDataSource1 = new InputDataSource();
-        inputDataSource1.setId(0);
-        inputDataSource1.setName("Coord1");
-        inputDataSource1.setDataSet(set1);
-        dataSources.add(inputDataSource1);
+
 
 		DataSet<Coord> set2 = coordSet2.flatMap(new CoordsReader());
-        InputDataSource inputDataSource2 = new InputDataSource();
-        inputDataSource2.setId(1);
-        inputDataSource2.setName("Coord2");
-        inputDataSource2.setDataSet(set2);
-        dataSources.add(inputDataSource2);
+
 		
 		DataSet<Tuple3<Integer, Integer, Double>> distances =
 				set1.cross(set2).with(new EuclideanDistComputer());
 		
 		distances.print();
         OperatorTree operatorTree = new OperatorTree(env);
-        TupleGenerator tg = new TupleGenerator(dataSources,operatorTree.createOperatorTree(),env,2);
+        TupleGenerator tg = new TupleGenerator(operatorTree.createOperatorTree(),env,2);
 		
 		//env.execute();
 

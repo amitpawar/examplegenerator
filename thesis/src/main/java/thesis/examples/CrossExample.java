@@ -8,7 +8,6 @@ import org.apache.flink.api.java.operators.DataSource;
 import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.flink.api.java.tuple.Tuple4;
 import org.apache.flink.util.Collector;
-import thesis.input.datasources.InputDataSource;
 import thesis.input.operatortree.OperatorTree;
 
 import java.util.ArrayList;
@@ -20,32 +19,23 @@ public class CrossExample {
     public static void main(String[] args) throws Exception {
 
         ExecutionEnvironment env = ExecutionEnvironment.createCollectionsEnvironment();
-        List<InputDataSource> dataSources = new ArrayList<InputDataSource>();
+
 
         DataSource<String> input1 = env.readTextFile("src/resources/CrossInput1");
         DataSource<String> input2 = env.readTextFile("src/resources/CrossInput2");
 
         DataSet<Tuple2<Integer, String>> set1 = input1.flatMap(new OneReader());
-        InputDataSource inputDataSource1 = new InputDataSource();
-        inputDataSource1.setId(0);
-        inputDataSource1.setDataSet(set1);
-        inputDataSource1.setName("One");
+
 
         DataSet<Tuple2<Integer, Double>> set2 = input2.flatMap(new TwoReader());
-        InputDataSource inputDataSource2 = new InputDataSource();
-        inputDataSource2.setId(1);
-        inputDataSource2.setDataSet(set2);
-        inputDataSource2.setName("Two");
 
-        dataSources.add(inputDataSource1);
-        dataSources.add(inputDataSource2);
 
         DataSet<Tuple4<Integer,String,Integer,Double>> crossSet = set1.cross(set2).projectFirst(0)
                 .projectFirst(1).projectSecond(0).projectSecond(1);
 
         crossSet.print();
         OperatorTree tree = new OperatorTree(env);
-        TupleGenerator tg = new TupleGenerator(dataSources,tree.createOperatorTree(),env,2);
+        TupleGenerator tg = new TupleGenerator(tree.createOperatorTree(),env,2);
         //env.execute();
 
     }

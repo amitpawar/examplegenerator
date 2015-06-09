@@ -22,7 +22,6 @@ import org.apache.flink.api.common.operators.Union;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.configuration.Configuration;
 
-import thesis.input.datasources.InputDataSource;
 import thesis.input.operatortree.SingleOperator.JUCCondition;
 
 public class OperatorTree {
