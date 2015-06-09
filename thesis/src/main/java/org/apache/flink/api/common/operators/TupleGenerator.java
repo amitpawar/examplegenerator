@@ -597,7 +597,7 @@ public class TupleGenerator {
 
         }
 
-        if (operator.getOperatorType() == OperatorType.UNION || operator.getOperatorType() == OperatorType.CROSS){
+        if (operator.getOperatorType() == OperatorType.UNION ){
             List firstParentExamples = operator.getParentOperators().get(0).getOperatorOutputAsList();
             List secondParentExamples = operator.getParentOperators().get(1).getOperatorOutputAsList();
             List operatorOutput = operator.getOperatorOutputAsList();
@@ -640,6 +640,74 @@ public class TupleGenerator {
             unionCrossEquivalenceClasses.setSecondTableExample(unionCrossEquivalenceClasses.getSecondTableExample());
             operator.setEquivalenceClasses(equivalenceClasses);
         }
+
+        if (operator.getOperatorType() == OperatorType.CROSS ){
+
+            List firstParentExamples = operator.getParentOperators().get(0).getOperatorOutputAsList();
+            List secondParentExamples = operator.getParentOperators().get(1).getOperatorOutputAsList();
+            List operatorOutput = operator.getOperatorOutputAsList();
+            UnionCrossEquivalenceClasses unionCrossEquivalenceClasses = new UnionCrossEquivalenceClasses();
+
+            if(!operatorOutput.isEmpty()) {
+                if (!firstParentExamples.isEmpty()) {
+                    List parentExamples = new ArrayList();
+                    for (Object outputExample : operatorOutput) {
+                        for (Object firstParentExample : firstParentExamples) {
+                            if (checkCrossTokens((Tuple)outputExample,(Tuple)firstParentExample)) {
+                                unionCrossEquivalenceClasses.getFirstTableExample().setHasExample(true);
+                                parentExamples.add(firstParentExample);
+                            }
+                        }
+                    }
+                    if(parentExamples.isEmpty())
+                        unionCrossEquivalenceClasses.getFirstTableExample().setHasExample(false);
+
+                    unionCrossEquivalenceClasses.getFirstTableExample().setExamples(parentExamples);
+                }
+
+                if(!secondParentExamples.isEmpty()){
+                    List parentExamples = new ArrayList();
+                    for (Object outputExample : operatorOutput) {
+                        for (Object secondParentExample : secondParentExamples) {
+                            if (checkCrossTokens((Tuple)outputExample,(Tuple)secondParentExample)) {
+                                unionCrossEquivalenceClasses.getSecondTableExample().setHasExample(true);
+                                parentExamples.add(secondParentExample);
+                            }
+                        }
+                    }
+                    if(parentExamples.isEmpty())
+                        unionCrossEquivalenceClasses.getSecondTableExample().setHasExample(false);
+
+                    unionCrossEquivalenceClasses.getSecondTableExample().setExamples(parentExamples);
+                }
+
+            }
+            List<EquivalenceClass> equivalenceClasses = new ArrayList<EquivalenceClass>();
+            equivalenceClasses.add(unionCrossEquivalenceClasses.getFirstTableExample());
+            equivalenceClasses.add(unionCrossEquivalenceClasses.getSecondTableExample());
+            unionCrossEquivalenceClasses.setFirstTableExample(unionCrossEquivalenceClasses.getFirstTableExample());
+            unionCrossEquivalenceClasses.setSecondTableExample(unionCrossEquivalenceClasses.getSecondTableExample());
+            operator.setEquivalenceClasses(equivalenceClasses);
+        }
+    }
+
+    public boolean checkCrossTokens(Tuple outputExample, Tuple parentExample){
+        boolean[] isParentTokensPresent = new boolean[parentExample.getArity()];
+        for(int ctr = 0 ; ctr < isParentTokensPresent.length;ctr++)
+            isParentTokensPresent[ctr] = false;
+
+        for(int i = 0; i < parentExample.getArity(); i++){
+            for(int j = 0; j < outputExample.getArity(); j++){
+                if(parentExample.getField(i) == outputExample.getField(j))
+                    isParentTokensPresent[i]= true;
+            }
+        }
+
+        for(int k = 0; k < isParentTokensPresent.length ; k++)
+            if(isParentTokensPresent[k] == false)
+                return false;
+
+        return true;
     }
 
 
