@@ -204,7 +204,7 @@ public class OperatorTree {
 	
 	public void addOperatorDetails(SingleOperator opToAdd, Operator<?> operator){
 
-         opToAdd.setOperatorName(operator.getName());
+        opToAdd.setOperatorName(operator.getName());
 		opToAdd.setOperator(operator);
 
 		opToAdd.setOperatorOutputType(operator.getOperatorInfo().getOutputType());

@@ -102,7 +102,7 @@ public class SampleTest {
 		DataSet<Tuple2<Tuple2<String, String>, Tuple2<String, Long>>> filterSet = joinSet
 				.filter(new RankFilter());
 
-		DataSet<Tuple3<String, String, Long>> printSet = joinSet.project(1);
+		DataSet<Tuple3<String, String, Long>> printSet = filterSet.project(1);
 		// .flatMap(new PrintResult());
 
 		//crossSet.print();
@@ -140,7 +140,7 @@ public class SampleTest {
 				Tuple2<Tuple2<String, String>, Tuple2<String, Long>> joinSet)
 				throws Exception {
 
-			return joinSet.f1.f1 > 2;
+			return joinSet.f1.f1 > 3;
 		}
 
 	}

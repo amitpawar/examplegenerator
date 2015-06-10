@@ -11,10 +11,7 @@ import org.apache.flink.api.java.ExecutionEnvironment;
 import org.apache.flink.api.java.tuple.Tuple;
 import org.apache.flink.configuration.Configuration;
 
-import thesis.algorithm.semantics.EquivalenceClass;
-import thesis.algorithm.semantics.JoinEquivalenceClasses;
-import thesis.algorithm.semantics.SingleEquivalenceClass;
-import thesis.algorithm.semantics.UnionCrossEquivalenceClasses;
+import thesis.algorithm.semantics.*;
 import thesis.input.operatortree.SingleOperator;
 import thesis.input.operatortree.OperatorType;
 import thesis.input.operatortree.SingleOperator.JUCCondition;
@@ -253,8 +250,26 @@ public class TupleGenerator {
                         }
                     }
                 }
+
+                if(operator.getOperatorType() == OperatorType.FILTER){
+                    for(EquivalenceClass equivalenceClass : operator.getEquivalenceClasses()){
+                        if(!equivalenceClass.hasExample()){
+                            fillFilterEquivalenceClass(operator,equivalenceClass);
+                        }
+                    }
+                }
             }
         }
+    }
+
+    public void fillFilterEquivalenceClass(SingleOperator operator, EquivalenceClass equivalenceClass) throws Exception {
+        String[] tokens = constructUnionCrossConstraintTokens(operator.getParentOperators().get(0).getOperatorOutputType());
+        Tuple parentTuple = getConstraintRecord(operator.getParentOperators().get(0),
+                new LinkedList<String>(Arrays.asList(tokens)));
+        operator.getParentOperators().get(0).getOperatorOutputAsList().add(parentTuple);
+        operator.getParentOperators().get(0).setConstraintRecords(parentTuple);
+        this.operatorToConstraintRecordMap.put(operator.getParentOperators().get(0),parentTuple);
+        propagateConstraintRecordUpstream(operator.getParentOperators().get(0),parentTuple);
     }
 
     public void fillUnionCrossEquivalenceClass(SingleOperator operator, EquivalenceClass equivalenceClass) throws Exception {
@@ -271,9 +286,7 @@ public class TupleGenerator {
         operator.getParentOperators().get(parentId).setConstraintRecords(parentTuple);
         this.operatorToConstraintRecordMap.put(operator.getParentOperators().get(parentId), parentTuple);
         propagateConstraintRecordUpstream(operator.getParentOperators().get(parentId), parentTuple);
-
-
-    }
+   }
 
     public void fillJoinEquivalenceClass(SingleOperator operator) throws Exception {
         JUCCondition joinCondition = operator.getJUCCondition();
@@ -677,6 +690,43 @@ public class TupleGenerator {
             unionCrossEquivalenceClasses.setFirstTableExample(unionCrossEquivalenceClasses.getFirstTableExample());
             unionCrossEquivalenceClasses.setSecondTableExample(unionCrossEquivalenceClasses.getSecondTableExample());
             operator.setEquivalenceClasses(equivalenceClasses);
+        }
+
+        if(operator.getOperatorType() == OperatorType.FILTER){
+            FilterEquivalenceClasses filterEquivalenceClasses = new FilterEquivalenceClasses();
+            List parentExamples = operator.getParentOperators().get(0).getOperatorOutputAsList();
+            List filterExamples =  operator.getOperatorOutputAsList();
+            List passExamples = new ArrayList();
+            List failExamples = new ArrayList();
+
+            for(Object parentExample : parentExamples){
+                if(filterExamples.contains(parentExample))
+                    passExamples.add(parentExample);
+                else
+                    failExamples.add(parentExample);
+            }
+
+            if(!passExamples.isEmpty()){
+                filterEquivalenceClasses.getFilterPass().setHasExample(true);
+                filterEquivalenceClasses.getFilterPass().setExamples(passExamples);
+            }
+            else
+                filterEquivalenceClasses.getFilterPass().setHasExample(false);
+
+            if(!failExamples.isEmpty()){
+                filterEquivalenceClasses.getFilterFail().setHasExample(true);
+                filterEquivalenceClasses.getFilterFail().setExamples(failExamples);
+            }
+            else
+                filterEquivalenceClasses.getFilterFail().setHasExample(false);
+
+            List<EquivalenceClass> equivalenceClasses = new ArrayList<EquivalenceClass>();
+            equivalenceClasses.add(filterEquivalenceClasses.getFilterPass());
+            equivalenceClasses.add(filterEquivalenceClasses.getFilterFail());
+            filterEquivalenceClasses.setFilterPass(filterEquivalenceClasses.getFilterPass());
+            filterEquivalenceClasses.setFilterFail(filterEquivalenceClasses.getFilterFail());
+            operator.setEquivalenceClasses(equivalenceClasses);
+
         }
     }
 

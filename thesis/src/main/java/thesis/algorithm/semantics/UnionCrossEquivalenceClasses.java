@@ -7,6 +7,8 @@ public class UnionCrossEquivalenceClasses {
 	
 	private List<EquivalenceClass> unionEquivalenceClasses = new ArrayList<EquivalenceClass>();
 	EquivalenceClass firstTableExample;
+	EquivalenceClass secondTableExample;
+
 	public EquivalenceClass getFirstTableExample() {
 		return firstTableExample;
 	}
@@ -23,8 +25,6 @@ public class UnionCrossEquivalenceClasses {
 		this.secondTableExample = secondTableExample;
 	}
 
-	EquivalenceClass secondTableExample;
-	
 	public UnionCrossEquivalenceClasses() {
 		this.firstTableExample = new EquivalenceClass("FirstTableExample");
 		this.secondTableExample = new EquivalenceClass("SecondTableExample");

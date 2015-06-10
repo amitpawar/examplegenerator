@@ -1,11 +1,12 @@
 package thesis.algorithm.semantics;
 
+import java.util.ArrayList;
 import java.util.List;
 
 
 public class FilterEquivalenceClasses{
 	
-	private List<EquivalenceClass> filterEquivalenceClasses;
+	private List<EquivalenceClass> filterEquivalenceClasses = new ArrayList<EquivalenceClass>();
 	EquivalenceClass filterPass;
 	EquivalenceClass filterFail;
 	
