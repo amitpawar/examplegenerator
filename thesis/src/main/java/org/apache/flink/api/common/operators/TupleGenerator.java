@@ -254,7 +254,7 @@ public class TupleGenerator {
                 if(operator.getOperatorType() == OperatorType.FILTER){
                     for(EquivalenceClass equivalenceClass : operator.getEquivalenceClasses()){
                         if(!equivalenceClass.hasExample()){
-                            fillFilterEquivalenceClass(operator,equivalenceClass);
+                           fillFilterEquivalenceClass(operator,equivalenceClass);
                         }
                     }
                 }
@@ -448,7 +448,7 @@ public class TupleGenerator {
             //remove all instances of the example from the operator
             operator.getOperatorOutputAsList().removeAll(Collections.singleton(exampleUnderScrutiny));
             setOperatorEquivalenceClassess(operator);
-            if (followingOperator != null) {
+            if (followingOperator != null ) {
                 if (!checkEquivalenceClasses(operator) || !checkFollowingOperatorsEquivalenceClasses(operator, followingOperator, exampleUnderScrutiny))
                     operator.getOperatorOutputAsList().add(exampleUnderScrutiny);
 
@@ -751,6 +751,8 @@ public class TupleGenerator {
 
 
     public boolean checkEquivalenceClasses(SingleOperator operator) {
+        /*if(operator.getOperatorType() == OperatorType.FILTER)
+            return true;*/
 
         boolean allEquivalenceClassCheck = true;
 
