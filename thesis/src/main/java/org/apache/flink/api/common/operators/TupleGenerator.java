@@ -263,16 +263,16 @@ public class TupleGenerator {
     }
 
     public void fillFilterEquivalenceClass(SingleOperator operator, EquivalenceClass equivalenceClass) throws Exception {
-       while(!checkEquivalenceClasses(operator)) {
-           String[] tokens = constructUnionCrossConstraintTokens(operator.getParentOperators().get(0).getOperatorOutputType());
-           Tuple parentTuple = getConstraintRecord(operator.getParentOperators().get(0),
-                   new LinkedList<String>(Arrays.asList(tokens)));
-           operator.getParentOperators().get(0).getOperatorOutputAsList().add(parentTuple);
-           operator.getParentOperators().get(0).setConstraintRecords(parentTuple);
-           this.operatorToConstraintRecordMap.put(operator.getParentOperators().get(0), parentTuple);
-           propagateConstraintRecordUpstream(operator.getParentOperators().get(0), parentTuple);
-           setOperatorEquivalenceClassess(operator);
-       }
+
+        String[] tokens = constructUnionCrossConstraintTokens(operator.getParentOperators().get(0).getOperatorOutputType());
+        Tuple parentTuple = getConstraintRecord(operator.getParentOperators().get(0),
+                new LinkedList<String>(Arrays.asList(tokens)));
+        operator.getParentOperators().get(0).getOperatorOutputAsList().add(parentTuple);
+        operator.getParentOperators().get(0).setConstraintRecords(parentTuple);
+        this.operatorToConstraintRecordMap.put(operator.getParentOperators().get(0), parentTuple);
+        propagateConstraintRecordUpstream(operator.getParentOperators().get(0), parentTuple);
+        setOperatorEquivalenceClassess(operator);
+
     }
 
     public void fillUnionCrossEquivalenceClass(SingleOperator operator, EquivalenceClass equivalenceClass) throws Exception {
@@ -442,14 +442,16 @@ public class TupleGenerator {
     public void checkPruningIsOK(LinkedHashMap<SingleOperator, Object> recordTracer) throws Exception {
         LinkedList<SingleOperator> operatorList = new LinkedList<SingleOperator>(recordTracer.keySet());
         for (int i = 1; i <= operatorList.size(); i++) {
-            SingleOperator followingOperator = null;
             SingleOperator operator = operatorList.get(operatorList.size() - i);
-            if (i != 1)
-                followingOperator = operatorList.get(operatorList.size() - i + 1);
+            SingleOperator followingOperator = getFollowingOperator(operator);
+            /*if (i != 1)
+                followingOperator = operatorList.get(operatorList.size() - i + 1);*/
 
             Object exampleUnderScrutiny = recordTracer.get(operator);
             //remove all instances of the example from the operator
             operator.getOperatorOutputAsList().removeAll(Collections.singleton(exampleUnderScrutiny));
+            if(operator.getOperatorType() == OperatorType.FILTER)
+                operator.getParentOperators().get(0).getOperatorOutputAsList().removeAll(Collections.singleton(exampleUnderScrutiny));
             setOperatorEquivalenceClassess(operator);
             if (followingOperator != null ) {
                 if (!checkEquivalenceClasses(operator) || !checkFollowingOperatorsEquivalenceClasses(operator, followingOperator, exampleUnderScrutiny))
@@ -500,6 +502,7 @@ public class TupleGenerator {
             setOperatorEquivalenceClassess(followingOperator);
             if (!checkEquivalenceClasses(followingOperator) || !checkFollowingOperatorsEquivalenceClasses(followingOperator, getFollowingOperator(followingOperator), exampleUnderScrutiny)) {
                 followingOperator.setOperatorOutputAsList(prevOutput);
+                setOperatorEquivalenceClassess(followingOperator);
                 return false;
             } else
                 return true;
