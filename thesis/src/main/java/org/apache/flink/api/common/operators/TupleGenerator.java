@@ -263,13 +263,16 @@ public class TupleGenerator {
     }
 
     public void fillFilterEquivalenceClass(SingleOperator operator, EquivalenceClass equivalenceClass) throws Exception {
-        String[] tokens = constructUnionCrossConstraintTokens(operator.getParentOperators().get(0).getOperatorOutputType());
-        Tuple parentTuple = getConstraintRecord(operator.getParentOperators().get(0),
-                new LinkedList<String>(Arrays.asList(tokens)));
-        operator.getParentOperators().get(0).getOperatorOutputAsList().add(parentTuple);
-        operator.getParentOperators().get(0).setConstraintRecords(parentTuple);
-        this.operatorToConstraintRecordMap.put(operator.getParentOperators().get(0),parentTuple);
-        propagateConstraintRecordUpstream(operator.getParentOperators().get(0),parentTuple);
+       while(!checkEquivalenceClasses(operator)) {
+           String[] tokens = constructUnionCrossConstraintTokens(operator.getParentOperators().get(0).getOperatorOutputType());
+           Tuple parentTuple = getConstraintRecord(operator.getParentOperators().get(0),
+                   new LinkedList<String>(Arrays.asList(tokens)));
+           operator.getParentOperators().get(0).getOperatorOutputAsList().add(parentTuple);
+           operator.getParentOperators().get(0).setConstraintRecords(parentTuple);
+           this.operatorToConstraintRecordMap.put(operator.getParentOperators().get(0), parentTuple);
+           propagateConstraintRecordUpstream(operator.getParentOperators().get(0), parentTuple);
+           setOperatorEquivalenceClassess(operator);
+       }
     }
 
     public void fillUnionCrossEquivalenceClass(SingleOperator operator, EquivalenceClass equivalenceClass) throws Exception {
