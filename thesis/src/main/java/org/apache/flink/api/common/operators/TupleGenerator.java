@@ -5,6 +5,7 @@ import java.util.*;
 import com.google.common.base.Strings;
 import com.google.common.collect.Lists;
 import org.apache.flink.api.common.functions.RichFilterFunction;
+import org.apache.flink.api.common.operators.util.FieldSet;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.api.common.typeutils.CompositeType;
 import org.apache.flink.api.java.ExecutionEnvironment;
@@ -110,6 +111,82 @@ public class TupleGenerator {
 
             }
 
+        }
+    }
+
+    public void executeUsingSemanticInformation(SingleOperator operator) throws IllegalAccessException, InstantiationException {
+        List input = operator.getParentOperators().get(0).getOperatorOutputAsList();
+        boolean isComposite = false;
+        List output = new ArrayList();
+        SemanticProperties semanticProperties = operator.getSemanticProperties();
+        //0 -> [3]
+        Map<Integer,int[]> mappingFields = new LinkedHashMap<Integer, int[]>();
+        Map<Integer, LinkedHashMap<Integer,Integer>> compositeTupleMapper = new HashMap<Integer, LinkedHashMap<Integer, Integer>>();
+
+        TypeInformation inputTypeInfo = operator.getParentOperators().get(0).getOperatorOutputType();
+        int totalFields = inputTypeInfo.getTotalFields();
+
+        for(int i = 0; i < totalFields; i++){
+            int[] thisFieldMapping = semanticProperties.getForwardingTargetFields(0,i).toArray();
+            mappingFields.put(i,thisFieldMapping);
+        }
+
+        if(inputTypeInfo.getArity()  < totalFields){
+            int ctr = 0;
+            Tuple sampleInputTuple = (Tuple)input.get(0);
+            isComposite = true;
+            for(int l = 0 ; l < inputTypeInfo.getArity(); l++){
+                if(((CompositeType)inputTypeInfo).getTypeAt(l).isTupleType()) {
+                    Tuple nestedTuple = sampleInputTuple.getField(l);
+                    LinkedHashMap<Integer,Integer> fieldIds = new LinkedHashMap<Integer, Integer>();
+                    for(int m = 0; m < nestedTuple.getArity();m++){
+                        fieldIds.put(m,ctr++);
+                    }
+                    compositeTupleMapper.put(l,fieldIds);
+                }
+                else {
+                    LinkedHashMap<Integer,Integer> mapper = new LinkedHashMap<Integer, Integer>();
+                    mapper.put(l,ctr++);
+                    compositeTupleMapper.put(l, mapper);
+                }
+            }
+        }
+
+        for(Object inputExample : input){
+            Tuple outputExample = (Tuple) operator.getOperatorOutputType().getTypeClass().newInstance();
+
+            Iterator fromIt = mappingFields.keySet().iterator();
+            while(fromIt.hasNext()) {
+                int from = (Integer) fromIt.next();
+                int[] to = mappingFields.get(from);
+                if(to.length > 0) {
+                    Object fromField;
+                    if (isComposite) {
+                        Iterator keyIt = compositeTupleMapper.keySet().iterator();
+                        while (keyIt.hasNext()) {
+                            int tupId = (Integer) keyIt.next();
+                            LinkedHashMap<Integer, Integer> fieldMap = compositeTupleMapper.get(tupId);
+                            Iterator insideIt = fieldMap.keySet().iterator();
+                            while (insideIt.hasNext()) {
+                                int fieldID = (Integer) insideIt.next();
+                                if (from == fieldMap.get(fieldID)) {
+                                    fromField = ((Tuple) ((Tuple) inputExample).getField(tupId)).getField(fieldID);
+                                    for (int k = 0; k < to.length; k++)
+                                        outputExample.setField(fromField, to[k]);
+                                }
+
+                            }
+                        }
+                    } else {
+                        fromField = ((Tuple) inputExample).getField(from);
+                        for (int k = 0; k < to.length; k++)
+                            outputExample.setField(fromField, to[k]);
+
+
+                    }
+                }
+            }
+            output.add(outputExample);
         }
     }
 
@@ -235,9 +312,13 @@ public class TupleGenerator {
             SingleOperator operator = operatorTree.get(i);
 
             if (operator.getOperatorType() != OperatorType.SOURCE && operator.getOperatorType() != OperatorType.LOAD) {
-                List output = executeIndividualOperator(operator);
-                // System.out.println("After upstream------------" + operator.getOperatorType());
-                operator.setOperatorOutputAsList(output);
+                if(operator.getOperatorType() == OperatorType.FLATMAP)
+                    executeUsingSemanticInformation(operator);
+                else {
+                    List output = executeIndividualOperator(operator);
+                    // System.out.println("After upstream------------" + operator.getOperatorType());
+                    operator.setOperatorOutputAsList(output);
+                }
                 // for (Object object : output)
                 // System.out.println(object);
 
@@ -402,7 +483,7 @@ public class TupleGenerator {
     public String[] constructJoinConstraintTokens(JUCCondition joinCondition, TypeInformation typeInformation, int inputNum) throws IllegalAccessException, InstantiationException {
 
         int totalFields = typeInformation.getTotalFields();
-        int arity = typeInformation.getArity();
+
         int keyColumn = (inputNum == 0) ? joinCondition.getFirstInputKeyColumns()[0] : joinCondition.getSecondInputKeyColumns()[0];
         String[] tokens = new String[totalFields];
         for (int i = 0; i < totalFields; i++) {

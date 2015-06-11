@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.Set;
 
 import org.apache.flink.api.common.operators.Operator;
+import org.apache.flink.api.common.operators.SemanticProperties;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.api.java.DataSet;
 
@@ -21,10 +22,16 @@ public class SingleOperator {
     private List<SingleOperator> parentOperators;
     private List operatorOutputAsList;
     private Tuple constraintRecords;
+    private SemanticProperties semanticProperties;
 
 
+    public SemanticProperties getSemanticProperties() {
+        return semanticProperties;
+    }
 
-
+    public void setSemanticProperties(SemanticProperties semanticProperties) {
+        this.semanticProperties = semanticProperties;
+    }
 
     public Tuple getConstraintRecords() {
         return constraintRecords;

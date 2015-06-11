@@ -3,6 +3,7 @@ package thesis.input.operatortree;
 import java.util.*;
 import java.util.regex.Pattern;
 
+import org.apache.flink.api.common.operators.*;
 import org.apache.flink.api.common.operators.base.*;
 import org.apache.flink.api.java.ExecutionEnvironment;
 import org.apache.flink.api.java.operators.translation.JavaPlan;
@@ -14,11 +15,6 @@ import org.apache.flink.optimizer.dag.DagConnection;
 import org.apache.flink.optimizer.dag.OptimizerNode;
 import org.apache.flink.optimizer.plan.OptimizedPlan;
 import org.apache.flink.optimizer.plan.SourcePlanNode;
-import org.apache.flink.api.common.operators.DualInputOperator;
-import org.apache.flink.api.common.operators.GenericDataSourceBase;
-import org.apache.flink.api.common.operators.Operator;
-import org.apache.flink.api.common.operators.SingleInputOperator;
-import org.apache.flink.api.common.operators.Union;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.configuration.Configuration;
 
@@ -131,7 +127,7 @@ public class OperatorTree {
 				if (operator instanceof FlatMapOperatorBase) {
 					//System.out.println("Testststs"+((FlatMapOperatorBase) operator).getInput().getClass());
 					if (!isVisited(operator)) {
-						opToAdd.setOperatorType(OperatorType.FLATMAP);
+                        opToAdd.setOperatorType(OperatorType.FLATMAP);
 						addOperatorDetails(opToAdd, operator);
 					}
 				}
@@ -218,6 +214,20 @@ public class OperatorTree {
 
 		opToAdd.setOperatorOutputType(operator.getOperatorInfo().getOutputType());
         opToAdd.setParentOperators(assignParentOperators(operator));
+
+        if(operator instanceof SingleInputOperator){
+            SemanticProperties semanticProperties = ((SingleInputOperator) operator).getSemanticProperties();
+            if(semanticProperties != null)
+                opToAdd.setSemanticProperties(semanticProperties);
+        }
+        if(operator instanceof DualInputOperator){
+            SemanticProperties semanticProperties = ((DualInputOperator) operator).getSemanticProperties();
+
+            if(semanticProperties != null)
+                opToAdd.setSemanticProperties(semanticProperties);
+        }
+
+
 
 		this.operatorTree.add(opToAdd);
         this.operatorSingleOperatorMap.put(operator, opToAdd);

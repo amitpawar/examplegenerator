@@ -21,6 +21,7 @@ import org.apache.flink.api.common.operators.base.GroupReduceOperatorBase;
 import org.apache.flink.api.common.operators.base.JoinOperatorBase;
 import org.apache.flink.api.java.DataSet;
 import org.apache.flink.api.java.ExecutionEnvironment;
+import org.apache.flink.api.java.functions.FunctionAnnotation;
 import org.apache.flink.api.java.operators.DataSource;
 import org.apache.flink.api.java.operators.UdfOperator;
 import org.apache.flink.api.java.operators.translation.JavaPlan;
@@ -115,6 +116,7 @@ public class SampleTest {
 
 	}
 
+	@FunctionAnnotation.ForwardedFields("f0.f0->f0;f0.f1->f1;f1.f1->f2")
 	public static class PrintResult
 			implements
 			FlatMapFunction<Tuple2<Tuple2<String, String>, Tuple2<String, Long>>, Tuple3<String, String, Long>> {
