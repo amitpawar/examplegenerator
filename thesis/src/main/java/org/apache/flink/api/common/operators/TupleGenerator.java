@@ -139,12 +139,84 @@ public class TupleGenerator {
 
     public void displayExamples(List<SingleOperator> operatorTree) {
         for (SingleOperator operator : operatorTree) {
-            if (operator.getOperatorType() != OperatorType.SOURCE) {
-                System.out.println(operator.getOperatorType() + " " + operator.getOperatorName());
-                for (Object object : operator.getOperatorOutputAsList())
-                    System.out.println(object);
+            if (operator.getOperatorType() != OperatorType.SOURCE ) {
+                if(!operator.getOperatorOutputAsList().isEmpty()) {
+                    int dashLength = -1;
+                    Object maxLenghtObject = getMaxLength(operator.getOperatorOutputAsList());
+                    int tuplesLength = getMaxTupleLengthPrintWise(maxLenghtObject, operator.getOperatorOutputAsList());
+                    int operatorNameLength = operator.getOperatorName().toString().length();
+                    if (tuplesLength > operatorNameLength)
+                        dashLength = tuplesLength;
+                    else
+                        dashLength = operatorNameLength;
+                    System.out.println(Strings.repeat("-", dashLength + 5));
+                    System.out.println(operator.getOperatorType() + " " + operator.getOperatorName());
+                    System.out.println(Strings.repeat("-", dashLength + 5));
+                    // System.out.println();
+                    for (Object object : operator.getOperatorOutputAsList()) {
+                        printTupleObject(object, operator.getOperatorOutputAsList());
+                        System.out.println();
+                    }
+                    System.out.println(Strings.repeat("-", dashLength + 5));
+                }
+                else {
+                    int dashLength = operator.getOperatorName().length();
+                    System.out.println(Strings.repeat("-",dashLength+5));
+                    System.out.println(operator.getOperatorType() + " " + operator.getOperatorName());
+                    System.out.println(Strings.repeat("-", dashLength + 5));
+                }
             }
         }
+    }
+
+    public void printTupleObject(Object tuple, List examples){
+        Tuple exampleTuple = (Tuple)tuple;
+        for(int ctr = 0; ctr < exampleTuple.getArity();ctr++) {
+            int maxLengthOfThisField = lengthCompensator(examples,ctr);
+            int thisFieldLength = exampleTuple.getField(ctr).toString().length();
+            int compensator = 0;
+            if(exampleTuple.getField(ctr).toString().length() < maxLengthOfThisField)
+                compensator = maxLengthOfThisField - thisFieldLength;
+            System.out.print("|"+Strings.repeat(" ",1));
+            System.out.print(exampleTuple.getField(ctr)+Strings.repeat(" ",2+compensator)+"|");
+        }
+    }
+
+    public int getMaxTupleLengthPrintWise(Object maxLengthTuple, List examples){
+        Tuple exampleTuple = (Tuple)maxLengthTuple;
+        String displayString = "";
+        for(int ctr = 0; ctr < exampleTuple.getArity();ctr++) {
+            int maxLengthOfThisField = lengthCompensator(examples,ctr);
+            int thisFieldLength = exampleTuple.getField(ctr).toString().length();
+            int compensator = 0;
+            if(exampleTuple.getField(ctr).toString().length() < maxLengthOfThisField)
+                compensator = maxLengthOfThisField - thisFieldLength;
+            displayString = displayString + "|"+Strings.repeat(" ",1)+exampleTuple.getField(ctr)+Strings.repeat(" ",2+compensator)+"|";
+        }
+        return displayString.length();
+    }
+
+    public int lengthCompensator(List examples, int fieldId){
+        int lenght = -1;
+        for(Object example : examples){
+            Tuple exampleTuple = (Tuple)example;
+            int tupleLength = exampleTuple.getField(fieldId).toString().length();
+            if(tupleLength > lenght)
+                lenght = tupleLength;
+        }
+        return lenght;
+    }
+
+    public Object getMaxLength(List examples){
+        Object maxLengthObject = null;
+        int length = -1;
+        for(Object example: examples){
+            if(example.toString().length() > length) {
+                length = example.toString().length();
+                maxLengthObject = example;
+            }
+        }
+        return maxLengthObject;
     }
 
     public void afterUpstreampass(List<SingleOperator> operatorTree) throws Exception {
