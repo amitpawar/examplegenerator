@@ -50,6 +50,7 @@ public class TupleGenerator {
         pruneTuples();
         System.out.println("After Pruning" + Strings.repeat("-", 200));
         displayExamples(this.operatorTree);
+        System.out.println("** Synthetic Records");
 
     }
 
@@ -141,6 +142,7 @@ public class TupleGenerator {
         for (SingleOperator operator : operatorTree) {
             if (operator.getOperatorType() != OperatorType.SOURCE ) {
                 if(!operator.getOperatorOutputAsList().isEmpty()) {
+
                     int dashLength = -1;
                     Object maxLenghtObject = getMaxLength(operator.getOperatorOutputAsList());
                     int tuplesLength = getMaxTupleLengthPrintWise(maxLenghtObject, operator.getOperatorOutputAsList());
@@ -155,6 +157,8 @@ public class TupleGenerator {
                     // System.out.println();
                     for (Object object : operator.getOperatorOutputAsList()) {
                         printTupleObject(object, operator.getOperatorOutputAsList());
+                        if(hasConstraintRecord(operator) && object == this.operatorToConstraintRecordMap.get(operator))
+                            System.out.print("**");
                         System.out.println();
                     }
                     System.out.println(Strings.repeat("-", dashLength + 5));
@@ -217,6 +221,13 @@ public class TupleGenerator {
             }
         }
         return maxLengthObject;
+    }
+
+    public boolean hasConstraintRecord(SingleOperator operator){
+        if(this.operatorToConstraintRecordMap.keySet().contains(operator))
+            return true;
+        else
+            return false;
     }
 
     public void afterUpstreampass(List<SingleOperator> operatorTree) throws Exception {

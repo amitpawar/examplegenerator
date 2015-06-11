@@ -102,8 +102,8 @@ public class SampleTest {
 		DataSet<Tuple2<Tuple2<String, String>, Tuple2<String, Long>>> filterSet = joinSet
 				.filter(new RankFilter());
 
-		DataSet<Tuple3<String, String, Long>> printSet = joinSet.project(1);
-		// .flatMap(new PrintResult());
+		DataSet<Tuple3<String, String, Long>> printSet = joinSet//.project(1);
+		 .flatMap(new PrintResult());
 
 		//crossSet.print();
 		printSet.print();  //datasink needed

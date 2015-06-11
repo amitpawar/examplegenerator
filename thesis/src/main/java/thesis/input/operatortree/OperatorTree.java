@@ -127,6 +127,15 @@ public class OperatorTree {
                     addOperatorDetails(opToAdd, operator);
                 }
             }
+			else{
+				if (operator instanceof FlatMapOperatorBase) {
+					//System.out.println("Testststs"+((FlatMapOperatorBase) operator).getInput().getClass());
+					if (!isVisited(operator)) {
+						opToAdd.setOperatorType(OperatorType.FLATMAP);
+						addOperatorDetails(opToAdd, operator);
+					}
+				}
+			}
         }
 
 		if (operator instanceof JoinOperatorBase) {
