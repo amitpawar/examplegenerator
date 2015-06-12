@@ -21,8 +21,8 @@ public class CrossExample {
         ExecutionEnvironment env = ExecutionEnvironment.createCollectionsEnvironment();
 
 
-        DataSource<String> input1 = env.readTextFile("src/resources/CrossInput1");
-        DataSource<String> input2 = env.readTextFile("src/resources/CrossInput2");
+        DataSource<String> input1 = env.readTextFile(Config.pathToSet1());
+        DataSource<String> input2 = env.readTextFile(Config.pathToSet2());
 
         DataSet<Tuple2<Integer, String>> set1 = input1.flatMap(new OneReader());
 
