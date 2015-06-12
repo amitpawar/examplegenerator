@@ -889,7 +889,10 @@ public class TupleGenerator {
 
                     unionCrossEquivalenceClasses.getSecondTableExample().setExamples(parentExamples);
                 }
-
+            }
+            else{//union didn't produce any result, both input empty
+                unionCrossEquivalenceClasses.getFirstTableExample().setHasExample(false);
+                unionCrossEquivalenceClasses.getSecondTableExample().setHasExample(false);
             }
             List<EquivalenceClass> equivalenceClasses = new ArrayList<EquivalenceClass>();
             equivalenceClasses.add(unionCrossEquivalenceClasses.getFirstTableExample());
@@ -937,6 +940,22 @@ public class TupleGenerator {
                         unionCrossEquivalenceClasses.getSecondTableExample().setHasExample(false);
 
                     unionCrossEquivalenceClasses.getSecondTableExample().setExamples(parentExamples);
+                }
+            } else {
+                if (firstParentExamples.isEmpty() || secondParentExamples.isEmpty()) {//cross didn't produce any result, one input is empty
+                    if (!firstParentExamples.isEmpty()) {
+                        unionCrossEquivalenceClasses.getFirstTableExample().setHasExample(true);
+                        unionCrossEquivalenceClasses.getFirstTableExample().setExamples(firstParentExamples);
+                    } else
+                        unionCrossEquivalenceClasses.getFirstTableExample().setHasExample(false);
+
+                    if (!secondParentExamples.isEmpty()) {
+                        unionCrossEquivalenceClasses.getSecondTableExample().setHasExample(true);
+                        unionCrossEquivalenceClasses.getSecondTableExample().setExamples(secondParentExamples);
+                    } else
+                        unionCrossEquivalenceClasses.getSecondTableExample().setHasExample(false);
+                } else { // hit when pruning appears
+                    unionCrossEquivalenceClasses.getFirstTableExample().setHasExample(false);
                 }
 
             }
