@@ -13,7 +13,7 @@ public class Config {
 	}
 
 	public static String pathToVisitsEU() {
-		return "/home/amit/thesis/dataflow/visitseu";
+		return "/home/amit/thesis/dataflow/visitseu2";
 	}
 
 /*	public static String pathToUrls() {

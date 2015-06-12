@@ -114,7 +114,10 @@ public class TupleGenerator {
         }
     }
 
+
+    //currently allows only one level of nesting Tuple2(Tuple2(),Tuple2())
     public void executeUsingSemanticInformation(SingleOperator operator) throws IllegalAccessException, InstantiationException {
+
         List input = operator.getParentOperators().get(0).getOperatorOutputAsList();
         boolean isComposite = false;
         List output = new ArrayList();
@@ -560,10 +563,11 @@ public class TupleGenerator {
         for (SingleOperator parent : childOperator.getParentOperators()) {
             if (childOperator.getOperatorType() != OperatorType.LOAD) {
                 while (parent.getOperatorType() != OperatorType.LOAD) {
-                    parent = parent.getParentOperators().get(0); //todo what if parent is dualinputoperator
                     parent.getOperatorOutputAsList().add(constraintRecord);
                     parent.setConstraintRecords(constraintRecord);
                     this.operatorToConstraintRecordMap.put(parent, constraintRecord);
+                    parent = parent.getParentOperators().get(0); //todo what if parent is dualinputoperator
+
                 }
 
                 parent.getOperatorOutputAsList().add(constraintRecord);
@@ -575,6 +579,66 @@ public class TupleGenerator {
             //if childOperator itself is load
             convertConstraintRecordToConcreteRecord(childOperator, constraintRecord);
         }
+    }
+
+    //incomplete function, need to handle many scenarios, will not always work
+    public void createParentConstraintRecord(int parentId, SingleOperator parent, SingleOperator child) throws IllegalAccessException, InstantiationException {
+        TypeInformation parentTypeInfo = parent.getOperatorOutputType(); //distinct
+        TypeInformation childTypeInfo = child.getOperatorOutputType(); //join
+        Tuple constraintRecord = child.getConstraintRecords();
+        SemanticProperties semanticProperties = child.getSemanticProperties();
+
+        if(parentTypeInfo == childTypeInfo)
+            parent.setConstraintRecords(constraintRecord);
+
+        else{
+            Map<Integer, LinkedHashMap<Integer,Integer>> compositeTupleMapper = new HashMap<Integer, LinkedHashMap<Integer, Integer>>();
+            int totalFields = childTypeInfo.getTotalFields();
+            boolean isComposite = false;
+
+            if(childTypeInfo.getArity()  < totalFields){ //child is composite
+                int ctr = 0;
+                Tuple sampleInputTuple = (Tuple)child.getOperatorOutputAsList().get(0);
+                isComposite = true;
+                for(int l = 0 ; l < childTypeInfo.getArity(); l++){
+                    if(((CompositeType)childTypeInfo).getTypeAt(l).isTupleType()) {
+                        Tuple nestedTuple = sampleInputTuple.getField(l);
+                        LinkedHashMap<Integer,Integer> fieldIds = new LinkedHashMap<Integer, Integer>();
+                        for(int m = 0; m < nestedTuple.getArity();m++){
+                            fieldIds.put(m,ctr++);
+                        }
+                        compositeTupleMapper.put(l,fieldIds);
+                    }
+                    else {
+                        LinkedHashMap<Integer,Integer> mapper = new LinkedHashMap<Integer, Integer>();
+                        mapper.put(l,ctr++);
+                        compositeTupleMapper.put(l, mapper);
+                    }
+                }
+                Tuple parentTuple = (Tuple) parentTypeInfo.getTypeClass().newInstance();
+                Iterator tupleIt = compositeTupleMapper.keySet().iterator();
+                while (tupleIt.hasNext()){
+                    int tupleId = (Integer)tupleIt.next();
+                    if(tupleId == parentId){
+                        LinkedHashMap<Integer,Integer> fieldMapper = compositeTupleMapper.get(tupleId);
+                        Iterator fieldIt = fieldMapper.keySet().iterator();
+                        while (fieldIt.hasNext()){
+                            int actualKey = (Integer) fieldIt.next();
+                            int mappedKey = fieldMapper.get(actualKey);
+                            int parentMapKey = semanticProperties.getForwardingSourceField(parentId,mappedKey);
+                            Object fieldVal = ((Tuple) ((Tuple) constraintRecord).getField(tupleId)).getField(actualKey);
+                            parentTuple.setField(fieldVal,parentMapKey);
+                        }
+                    }
+                }
+                parent.setConstraintRecords(parentTuple);
+            }
+            else{
+                Tuple parentTuple = (Tuple) parentTypeInfo.getTypeClass().newInstance();
+            }
+
+        }
+
     }
 
     public void pruneTuples() throws Exception {
