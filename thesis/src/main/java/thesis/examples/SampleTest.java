@@ -110,10 +110,10 @@ public class SampleTest {
 		printSet.print();  //datasink needed
 
 		//printSet.writeAsCsv(Config.outputPath()+"/" + SampleTest.class.getName(), WriteMode.OVERWRITE);
-		OperatorTree tree = new OperatorTree(env );
+		//OperatorTree tree = new OperatorTree(env );
 
-		TupleGenerator tg = new TupleGenerator(tree.createOperatorTree(), env,2);
-
+		//TupleGenerator tg = new TupleGenerator(tree.createOperatorTree(), env,2);
+		TupleGenerator tg = new TupleGenerator(env,3);
 	}
 
 	@FunctionAnnotation.ForwardedFields("f0.f0->f0;f0.f1->f1;f1.f1->f2")

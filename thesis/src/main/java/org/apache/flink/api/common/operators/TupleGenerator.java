@@ -13,6 +13,7 @@ import org.apache.flink.api.java.tuple.Tuple;
 import org.apache.flink.configuration.Configuration;
 
 import thesis.algorithm.semantics.*;
+import thesis.input.operatortree.OperatorTree;
 import thesis.input.operatortree.SingleOperator;
 import thesis.input.operatortree.OperatorType;
 import thesis.input.operatortree.SingleOperator.JUCCondition;
@@ -53,6 +54,26 @@ public class TupleGenerator {
         displayExamples(this.operatorTree);
         System.out.println("** Synthetic Records");
 
+    }
+
+    public TupleGenerator(ExecutionEnvironment env, int maxRecords) throws Exception {
+        OperatorTree operatorTree = new OperatorTree(env);
+        this.operatorTree = operatorTree.createOperatorTree();
+        this.env = env;
+        this.maxRecords = maxRecords;
+        downStreamPass(this.operatorTree);
+        setEquivalenceClasses();
+        System.out.println("After Downstream" + Strings.repeat("-", 200));
+        displayExamples(this.operatorTree);
+        upStreamPass(this.operatorTree);
+        afterUpstreampass(this.operatorTree);
+        setEquivalenceClasses();
+        System.out.println("After Upstream" + Strings.repeat("-", 200));
+        displayExamples(this.operatorTree);
+        pruneTuples();
+        System.out.println("After Pruning" + Strings.repeat("-", 200));
+        displayExamples(this.operatorTree);
+        System.out.println("** Synthetic Records");
     }
 
     public void downStreamPass(List<SingleOperator> operatorTree) throws Exception {
