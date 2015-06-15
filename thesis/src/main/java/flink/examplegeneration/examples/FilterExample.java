@@ -1,7 +1,7 @@
-package dataflow.programs.example.generation.examples;
+package flink.examplegeneration.examples;
 
 
-import dataflow.programs.example.generation.input.operatortree.OperatorTree;
+import flink.examplegeneration.input.operatortree.OperatorTree;
 import org.apache.flink.api.common.functions.FilterFunction;
 import org.apache.flink.api.common.operators.TupleGenerator;
 import org.apache.flink.api.java.DataSet;

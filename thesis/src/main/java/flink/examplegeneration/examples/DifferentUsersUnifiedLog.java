@@ -1,13 +1,13 @@
-package dataflow.programs.example.generation.examples;
+package flink.examplegeneration.examples;
 
-import dataflow.programs.example.generation.input.operatortree.OperatorTree;
+import flink.examplegeneration.input.operatortree.OperatorTree;
 import org.apache.flink.api.java.DataSet;
 import org.apache.flink.api.java.ExecutionEnvironment;
 import org.apache.flink.api.java.operators.DataSource;
 import org.apache.flink.api.java.tuple.Tuple3;
 
 import org.apache.flink.api.common.operators.TupleGenerator;
-import dataflow.programs.example.generation.examples.UserPageVisitsGroupedLog.VisitsReaderWithCount;
+import flink.examplegeneration.examples.UserPageVisitsGroupedLog.VisitsReaderWithCount;
 
 public class DifferentUsersUnifiedLog {
 

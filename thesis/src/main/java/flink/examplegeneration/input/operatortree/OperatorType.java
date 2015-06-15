@@ -1,4 +1,4 @@
-package dataflow.programs.example.generation.input.operatortree;
+package flink.examplegeneration.input.operatortree;
 
 public enum OperatorType {
 	LOAD,

@@ -1,4 +1,4 @@
-package dataflow.programs.example.generation.algorithm.semantics;
+package flink.examplegeneration.algorithm.semantics;
 
 import java.util.List;
 

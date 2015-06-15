@@ -1,4 +1,4 @@
-package dataflow.programs.example.generation.input.operatortree;
+package flink.examplegeneration.input.operatortree;
 
 import java.util.*;
 
@@ -16,7 +16,7 @@ import org.apache.flink.optimizer.plan.OptimizedPlan;
 import org.apache.flink.optimizer.plan.SourcePlanNode;
 import org.apache.flink.configuration.Configuration;
 
-import dataflow.programs.example.generation.input.operatortree.SingleOperator.JUCCondition;
+import flink.examplegeneration.input.operatortree.SingleOperator.JUCCondition;
 
 public class OperatorTree {
 

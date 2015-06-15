@@ -1,4 +1,4 @@
-package dataflow.programs.example.generation.examples;
+package flink.examplegeneration.examples;
 
 public class Config {
 

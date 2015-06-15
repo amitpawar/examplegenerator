@@ -4,16 +4,16 @@ import java.util.*;
 
 import com.google.common.base.Strings;
 import com.google.common.collect.Lists;
-import dataflow.programs.example.generation.algorithm.semantics.*;
+import flink.examplegeneration.algorithm.semantics.*;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.api.common.typeutils.CompositeType;
 import org.apache.flink.api.java.ExecutionEnvironment;
 import org.apache.flink.api.java.tuple.Tuple;
 
-import dataflow.programs.example.generation.input.operatortree.OperatorTree;
-import dataflow.programs.example.generation.input.operatortree.SingleOperator;
-import dataflow.programs.example.generation.input.operatortree.OperatorType;
-import dataflow.programs.example.generation.input.operatortree.SingleOperator.JUCCondition;
+import flink.examplegeneration.input.operatortree.OperatorTree;
+import flink.examplegeneration.input.operatortree.SingleOperator;
+import flink.examplegeneration.input.operatortree.OperatorType;
+import flink.examplegeneration.input.operatortree.SingleOperator.JUCCondition;
 
 public class TupleGenerator {
 
