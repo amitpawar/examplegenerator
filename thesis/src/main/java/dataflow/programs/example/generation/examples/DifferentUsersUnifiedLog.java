@@ -1,19 +1,13 @@
-package thesis.examples;
+package dataflow.programs.example.generation.examples;
 
-import java.util.ArrayList;
-import java.util.List;
-
+import dataflow.programs.example.generation.input.operatortree.OperatorTree;
 import org.apache.flink.api.java.DataSet;
 import org.apache.flink.api.java.ExecutionEnvironment;
 import org.apache.flink.api.java.operators.DataSource;
 import org.apache.flink.api.java.tuple.Tuple3;
-import org.apache.flink.core.fs.FileSystem.WriteMode;
 
 import org.apache.flink.api.common.operators.TupleGenerator;
-import thesis.examples.UserPageVisitsGroupedLog.GroupCounter;
-import thesis.examples.UserPageVisitsGroupedLog.HighVisitsFilter;
-import thesis.examples.UserPageVisitsGroupedLog.VisitsReaderWithCount;
-import thesis.input.operatortree.OperatorTree;
+import dataflow.programs.example.generation.examples.UserPageVisitsGroupedLog.VisitsReaderWithCount;
 
 public class DifferentUsersUnifiedLog {
 

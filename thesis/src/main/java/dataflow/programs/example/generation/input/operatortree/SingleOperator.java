@@ -1,15 +1,13 @@
-package thesis.input.operatortree;
+package dataflow.programs.example.generation.input.operatortree;
 
 import java.util.List;
-import java.util.Set;
 
 import org.apache.flink.api.common.operators.Operator;
 import org.apache.flink.api.common.operators.SemanticProperties;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
-import org.apache.flink.api.java.DataSet;
 
 import org.apache.flink.api.java.tuple.Tuple;
-import thesis.algorithm.semantics.EquivalenceClass;
+import dataflow.programs.example.generation.algorithm.semantics.EquivalenceClass;
 
 public class SingleOperator {
 

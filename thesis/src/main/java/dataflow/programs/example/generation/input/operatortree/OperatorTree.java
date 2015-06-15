@@ -1,7 +1,6 @@
-package thesis.input.operatortree;
+package dataflow.programs.example.generation.input.operatortree;
 
 import java.util.*;
-import java.util.regex.Pattern;
 
 import org.apache.flink.api.common.operators.*;
 import org.apache.flink.api.common.operators.base.*;
@@ -15,10 +14,9 @@ import org.apache.flink.optimizer.dag.DagConnection;
 import org.apache.flink.optimizer.dag.OptimizerNode;
 import org.apache.flink.optimizer.plan.OptimizedPlan;
 import org.apache.flink.optimizer.plan.SourcePlanNode;
-import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.configuration.Configuration;
 
-import thesis.input.operatortree.SingleOperator.JUCCondition;
+import dataflow.programs.example.generation.input.operatortree.SingleOperator.JUCCondition;
 
 public class OperatorTree {
 

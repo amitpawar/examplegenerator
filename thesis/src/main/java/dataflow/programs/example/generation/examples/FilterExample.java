@@ -1,16 +1,15 @@
-package thesis.examples;
+package dataflow.programs.example.generation.examples;
 
 
+import dataflow.programs.example.generation.input.operatortree.OperatorTree;
 import org.apache.flink.api.common.functions.FilterFunction;
 import org.apache.flink.api.common.operators.TupleGenerator;
 import org.apache.flink.api.java.DataSet;
 import org.apache.flink.api.java.ExecutionEnvironment;
 import org.apache.flink.api.java.operators.DataSource;
-import org.apache.flink.api.java.operators.FlatMapOperator;
 import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.flink.api.java.tuple.Tuple4;
-import thesis.input.operatortree.OperatorTree;
-import thesis.examples.CrossExample.*;
+
 
 public class FilterExample {
 
@@ -22,9 +21,9 @@ public class FilterExample {
         DataSource<String> input1 = env.readTextFile(Config.pathToSet1());
         DataSource<String> input2 = env.readTextFile(Config.pathToSet2());
 
-        DataSet<Tuple2<Integer, String>> set1 = input1.flatMap(new OneReader());
+        DataSet<Tuple2<Integer, String>> set1 = input1.flatMap(new CrossExample.OneReader());
 
-        DataSet<Tuple2<Integer, Double>> set2 = input2.flatMap(new TwoReader());
+        DataSet<Tuple2<Integer, Double>> set2 = input2.flatMap(new CrossExample.TwoReader());
         DataSet<Tuple2<Integer, Double>> filterSet = set2.filter(new PopulationFilter());
 
         DataSet<Tuple4<Integer,String,Integer,Double>> crossSet = set1.cross(filterSet).projectFirst(0)

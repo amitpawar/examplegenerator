@@ -1,4 +1,4 @@
-package thesis.algorithm.semantics;
+package dataflow.programs.example.generation.algorithm.semantics;
 
 import java.util.List;
 

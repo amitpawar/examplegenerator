@@ -1,4 +1,4 @@
-package thesis.examples;
+package dataflow.programs.example.generation.examples;
 
 public class Config {
 

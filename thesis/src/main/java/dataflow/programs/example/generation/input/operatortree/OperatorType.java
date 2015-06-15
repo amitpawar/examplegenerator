@@ -1,4 +1,4 @@
-package thesis.input.operatortree;
+package dataflow.programs.example.generation.input.operatortree;
 
 public enum OperatorType {
 	LOAD,
