@@ -53,6 +53,16 @@ public class TupleGenerator {
 
     }
 
+
+    public List<SingleOperator> getOperatorTree() {
+        return operatorTree;
+    }
+
+    public void setOperatorTree(List<SingleOperator> operatorTree) {
+        this.operatorTree = operatorTree;
+    }
+
+
     public TupleGenerator(ExecutionEnvironment env, int maxRecords) throws Exception {
         OperatorTree operatorTree = new OperatorTree(env);
         this.operatorTree = operatorTree.createOperatorTree();
