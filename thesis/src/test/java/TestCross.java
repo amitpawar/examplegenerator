@@ -35,7 +35,7 @@ public class TestCross {
 
         crossSet.print();
 
-        TupleGenerator tupleGenerator = new TupleGenerator(env,2);
+        TupleGenerator tupleGenerator = new TupleGenerator(env,4);
 
         for(SingleOperator operator : tupleGenerator.getOperatorTree()){
             TestCase.assertNotNull(operator.getOperatorOutputAsList());
