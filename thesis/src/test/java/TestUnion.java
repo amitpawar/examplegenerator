@@ -1,3 +1,4 @@
+
 import flink.examplegeneration.input.operatortree.SingleOperator;
 import junit.framework.TestCase;
 import org.apache.flink.api.common.functions.FlatMapFunction;
