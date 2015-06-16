@@ -3,13 +3,15 @@ package flink.examplegeneration.examples;
 public class Config {
 
 
-	public static String pathToVisits() {
+	public static String pathToVisits1() {
 		return "src/resources/visits";
 	}
 
 	public static String pathToVisitsEU() {
 		return "src/resources/visitseu";
 	}
+
+	public static String pathToVisits(){return "hdfs://localhost:9000/thesis/visits";}
 
 
 

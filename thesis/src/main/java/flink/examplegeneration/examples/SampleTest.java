@@ -1,5 +1,8 @@
 package flink.examplegeneration.examples;
 
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
 import java.util.regex.Pattern;
 
 import org.apache.flink.api.common.functions.FilterFunction;
@@ -13,25 +16,30 @@ import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.flink.api.java.tuple.Tuple3;
 import org.apache.flink.util.Collector;
 
+
 import org.apache.flink.api.common.operators.TupleGenerator;
+import org.apache.hadoop.io.LongWritable;
+import org.apache.hadoop.io.Text;
+import org.apache.hadoop.mapred.TextInputFormat;
 
 public class SampleTest {
-
-	
 
 	public static void main(String[] args) throws Exception {
 
 
 		ExecutionEnvironment env = ExecutionEnvironment
-				.createCollectionsEnvironment();
+				.getExecutionEnvironment();
 
-		DataSource<String> visits = env.readTextFile(Config.pathToVisits());
+		//DataSource<String> visits = env.readTextFile(Config.pathToVisits());
+
+        DataSource<Tuple2<LongWritable, Text>> visits = env.readHadoopFile(new TextInputFormat(), LongWritable.class,
+                Text.class, Config.pathToVisits());
 		DataSource<String> urls = env.readTextFile(Config.pathToUrls());
 		
 		
 		
 		DataSet<Tuple2<String, String>> visitSet = visits.flatMap(
-				new VisitsReader()).distinct();
+				new VisitsHadoopReader()).distinct();
 
 		
 		//DataSet<Visits> visitSet = visits.flatMap(new VisitsPOJAReader());
@@ -71,7 +79,7 @@ public class SampleTest {
 
 		//printSet.writeAsCsv(Config.outputPath()+"/" + SampleTest.class.getName(), WriteMode.OVERWRITE);
 		//OperatorTree tree = new OperatorTree(env );
-
+       // env.execute();
 		//TupleGenerator tg = new TupleGenerator(tree.createOperatorTree(), env,2);
 		TupleGenerator tg = new TupleGenerator(env,3);
 	}
@@ -127,6 +135,25 @@ public class SampleTest {
 		}
 
 	}
+
+    public static class VisitsHadoopReader implements
+            FlatMapFunction<Tuple2<LongWritable,Text>, Tuple2<String, String>> {
+
+        private final Pattern SEPARATOR = Pattern.compile("[ \t,]");
+
+        // Reads Visit data-set from flat file into tuples of <User,URL>
+        public void flatMap(Tuple2<LongWritable, Text> readLineFromFile, Collector<Tuple2<String, String>> collector) throws Exception {
+            String line = readLineFromFile.f1.toString();
+            if (!line.startsWith("%")) {
+                String[] tokens = SEPARATOR.split(line);
+
+                String user = tokens[0];
+                String url = tokens[1];
+
+                collector.collect(new Tuple2<String, String>(user, url));
+            }
+        }
+    }
 
 	public static class VisitsPOJAReader implements
 			FlatMapFunction<String, Visits> {

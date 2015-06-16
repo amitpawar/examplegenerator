@@ -15,7 +15,7 @@ public class FilterExample {
 
     public static void main(String[] args) throws Exception {
 
-        ExecutionEnvironment env = ExecutionEnvironment.createCollectionsEnvironment();
+        ExecutionEnvironment env = ExecutionEnvironment.getExecutionEnvironment();
 
 
         DataSource<String> input1 = env.readTextFile(Config.pathToSet1());
