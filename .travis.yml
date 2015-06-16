@@ -3,3 +3,9 @@ language: java
 
 jdk:
   "oraclejdk7"
+  
+script: mvn test
+
+notifications:
+  email:
+    -amitpawar5388@gmail.com
