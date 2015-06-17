@@ -93,7 +93,7 @@ public class TupleGenerator {
 
                 List list = ((GenericDataSourceBase) operator.getOperator()).executeOnCollections(this.env.getConfig());
                 operator.setOperatorOutputAsList(list);
-                if (list.size() < this.maxRecords)
+                if (list.size() < this.maxRecords && !list.isEmpty())
                     this.maxRecords = list.size();
 
             }
@@ -1108,38 +1108,12 @@ public class TupleGenerator {
             List operatorOutput = operator.getOperatorOutputAsList();
             UnionCrossEquivalenceClasses unionCrossEquivalenceClasses = new UnionCrossEquivalenceClasses();
 
-            if (!operatorOutput.isEmpty()) {
-                if (!firstParentExamples.isEmpty()) {
-                    List parentExamples = new ArrayList();
-                    for (Object outputExample : operatorOutput) {
-                        for (Object firstParentExample : firstParentExamples) {
-                            if (checkCrossTokens((Tuple) outputExample, (Tuple) firstParentExample)) {
-                                unionCrossEquivalenceClasses.getFirstTableExample().setHasExample(true);
-                                parentExamples.add(firstParentExample);
-                            }
-                        }
-                    }
-                    if (parentExamples.isEmpty())
-                        unionCrossEquivalenceClasses.getFirstTableExample().setHasExample(false);
+            if (!operatorOutput.isEmpty()) { //cross produced result, meaning both inputs have examples
+                unionCrossEquivalenceClasses.getFirstTableExample().setHasExample(true);
+                unionCrossEquivalenceClasses.getFirstTableExample().setExamples(firstParentExamples);
+                unionCrossEquivalenceClasses.getSecondTableExample().setHasExample(true);
+                unionCrossEquivalenceClasses.getSecondTableExample().setExamples(secondParentExamples);
 
-                    unionCrossEquivalenceClasses.getFirstTableExample().setExamples(parentExamples);
-                }
-
-                if (!secondParentExamples.isEmpty()) {
-                    List parentExamples = new ArrayList();
-                    for (Object outputExample : operatorOutput) {
-                        for (Object secondParentExample : secondParentExamples) {
-                            if (checkCrossTokens((Tuple) outputExample, (Tuple) secondParentExample)) {
-                                unionCrossEquivalenceClasses.getSecondTableExample().setHasExample(true);
-                                parentExamples.add(secondParentExample);
-                            }
-                        }
-                    }
-                    if (parentExamples.isEmpty())
-                        unionCrossEquivalenceClasses.getSecondTableExample().setHasExample(false);
-
-                    unionCrossEquivalenceClasses.getSecondTableExample().setExamples(parentExamples);
-                }
             } else {
                 if (firstParentExamples.isEmpty() || secondParentExamples.isEmpty()) {//cross didn't produce any result, one input is empty
                     if (!firstParentExamples.isEmpty()) {
@@ -1153,10 +1127,7 @@ public class TupleGenerator {
                         unionCrossEquivalenceClasses.getSecondTableExample().setExamples(secondParentExamples);
                     } else
                         unionCrossEquivalenceClasses.getSecondTableExample().setHasExample(false);
-                } else { // hit when pruning appears
-                    unionCrossEquivalenceClasses.getFirstTableExample().setHasExample(false);
                 }
-
             }
             List<EquivalenceClass> equivalenceClasses = new ArrayList<EquivalenceClass>();
             equivalenceClasses.add(unionCrossEquivalenceClasses.getFirstTableExample());
@@ -1201,33 +1172,6 @@ public class TupleGenerator {
 
         }
     }
-
-    /**
-     * Checks whether outputexample tuples has parent's tuples
-     *
-     * @param outputExample The downstream's output
-     * @param parentExample The parent's output
-     * @return true is downstream has parent's tuples
-     */
-    private boolean checkCrossTokens(Tuple outputExample, Tuple parentExample) {
-        boolean[] isParentTokensPresent = new boolean[parentExample.getArity()];
-        for (int ctr = 0; ctr < isParentTokensPresent.length; ctr++)
-            isParentTokensPresent[ctr] = false;
-
-        for (int i = 0; i < parentExample.getArity(); i++) {
-            for (int j = 0; j < outputExample.getArity(); j++) {
-                if (parentExample.getField(i) == outputExample.getField(j))
-                    isParentTokensPresent[i] = true;
-            }
-        }
-
-        for (int k = 0; k < isParentTokensPresent.length; k++)
-            if (isParentTokensPresent[k] == false)
-                return false;
-
-        return true;
-    }
-
 
     /**
      * Checks whether equivalence classes are set or not

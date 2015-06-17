@@ -30,8 +30,7 @@ public class TestCross {
         DataSet<Tuple2<Integer, Double>> set2 = input2.flatMap(new TwoReader());
 
 
-        DataSet<Tuple4<Integer,String,Integer,Double>> crossSet = set1.cross(set2).projectFirst(0)
-                .projectFirst(1).projectSecond(0).projectSecond(1);
+        DataSet crossSet = set1.cross(set2);
 
         crossSet.print();
 
