@@ -18,6 +18,9 @@ import org.apache.flink.configuration.Configuration;
 
 import flink.examplegeneration.input.operatortree.SingleOperator.JUCCondition;
 
+/**
+ * The class that creates operator tree for the given Flink job
+ */
 public class OperatorTree {
 
 	private JavaPlan javaPlan;
@@ -42,7 +45,11 @@ public class OperatorTree {
 		}
 	};
 
-	public OperatorTree(ExecutionEnvironment env) {
+    /**
+     * Creates  new instance of the operator tree.
+     * @param env {@link org.apache.flink.api.java.ExecutionEnvironment} of the Flink job
+     */
+    public OperatorTree(ExecutionEnvironment env) {
 		this.javaPlan = env.createProgramPlan();
 		this.optimizer = new Optimizer(new DataStatistics(),new DefaultCostEstimator(), new Configuration());
 		this.optimizedPlan = this.optimizer.compile(this.javaPlan);
@@ -54,6 +61,10 @@ public class OperatorTree {
 		return (this.addedNodes.contains(operator.getName()));
 	}
 
+    /**
+     * Creates the operator tree by traversing from source to sink
+     * @return The operator tree
+     */
 	public List<SingleOperator> createOperatorTree() {
 
         this.dataSetIds = new ArrayList<Integer>();
@@ -83,7 +94,11 @@ public class OperatorTree {
 		return this.operatorTree;
 	}
 
-	public void addOutgoingNodes(List<DagConnection> outgoingConnections) {
+    /**
+     * Adds outgoing node for the given operator
+     * @param outgoingConnections The outgoing connections of the given operators
+     */
+    private void addOutgoingNodes(List<DagConnection> outgoingConnections) {
 		
 		for (DagConnection conn : outgoingConnections) {
 			OptimizerNode node = conn.getTarget().getOptimizerNode();
@@ -98,20 +113,15 @@ public class OperatorTree {
 		}
 	}
 
+    /**
+     * Adds single node operator
+     * @param node The {@link org.apache.flink.optimizer.dag.OptimizerNode} object
+     */
 	@SuppressWarnings("rawtypes")
-	public void addNode(OptimizerNode node) {
+	private void addNode(OptimizerNode node) {
 		
 		Operator<?> operator = node.getOperator();
 		SingleOperator opToAdd = new SingleOperator();
-
-
-       /* if (operator instanceof FlatMapOperatorBase) {
-            //System.out.println("Testststs"+((FlatMapOperatorBase) operator).getInput().getClass());
-             if (!isVisited(operator)) {
-                opToAdd.setOperatorType(OperatorType.FLATMAP);
-                addOperatorDetails(opToAdd, operator);
-            }
-        }*/
 
         if(operator instanceof SingleInputOperator) {
 
@@ -204,14 +214,19 @@ public class OperatorTree {
         }
 		
 	}
-	
-	public void addOperatorDetails(SingleOperator opToAdd, Operator<?> operator){
+
+    /**
+     * Adds the necessary operator details
+     * @param opToAdd The operator to add
+     * @param operator The {@link org.apache.flink.api.common.operators} instance
+     */
+    private void addOperatorDetails(SingleOperator opToAdd, Operator<?> operator){
 
         opToAdd.setOperatorName(operator.getName());
 		opToAdd.setOperator(operator);
 
 		opToAdd.setOperatorOutputType(operator.getOperatorInfo().getOutputType());
-        opToAdd.setParentOperators(assignParentOperators(operator));
+        opToAdd.setParentOperators(getParentOperators(operator));
 
         if(operator instanceof SingleInputOperator){
             SemanticProperties semanticProperties = ((SingleInputOperator) operator).getSemanticProperties();
@@ -231,10 +246,16 @@ public class OperatorTree {
         this.operatorSingleOperatorMap.put(operator, opToAdd);
 		this.addedNodes.add(operator.getName());
 	}
-	
 
+
+    /**
+     * Adds the join details for the Join operator
+     * @param joinOperator The JOIN operator
+     * @param opToAdd The {@link org.apache.flink.api.common.operators.base.JoinOperatorBase} instance
+     * @return The JOIN operator object with details added
+     */
 	@SuppressWarnings("rawtypes")
-	public SingleOperator addJoinOperatorDetails(JoinOperatorBase joinOperator, SingleOperator opToAdd){
+	private SingleOperator addJoinOperatorDetails(JoinOperatorBase joinOperator, SingleOperator opToAdd){
 			
 		int[] firstInputKeys = joinOperator.getKeyColumns(InputNum.FIRST.getValue());
 		int[] secondInputKeys = joinOperator.getKeyColumns(InputNum.SECOND.getValue());
@@ -249,8 +270,13 @@ public class OperatorTree {
 		return opToAdd;
 	
 	}
-	
-    public List<SingleOperator> assignParentOperators(Operator operator){
+
+    /**
+     * Gets parent operators to a given operator
+     * @param operator The operator whose parents are searched.
+     * @return The parent operators list
+     */
+    private List<SingleOperator> getParentOperators(Operator operator){
 
         List<SingleOperator> parents = new ArrayList<SingleOperator>();
         if(operator instanceof SingleInputOperator){
@@ -266,7 +292,12 @@ public class OperatorTree {
         return parents;
     }
 
-    public boolean checkOperatorTreeHasBothParentsForDualOperator(DualInputOperator operator){
+    /**
+     * Checks whether all parents for the given operator is in the operator tree
+     * @param operator The operator under consideration
+     * @return true if they are present
+     */
+    private boolean checkOperatorTreeHasBothParentsForDualOperator(DualInputOperator operator){
         boolean hasFirstInput = this.operatorSingleOperatorMap.get(operator.getFirstInput()) != null;
         boolean hasSecondInput = this.operatorSingleOperatorMap.get(operator.getSecondInput()) != null;
         return (hasFirstInput && hasSecondInput);

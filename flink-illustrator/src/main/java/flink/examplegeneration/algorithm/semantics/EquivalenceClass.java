@@ -2,6 +2,9 @@ package flink.examplegeneration.algorithm.semantics;
 
 import java.util.List;
 
+/**
+ * The equivalence class object, each operator may have one or more equivalence class
+ */
 public class EquivalenceClass {
 	
 	private String name;
@@ -16,7 +19,11 @@ public class EquivalenceClass {
     public void setExamples(List examples) {
         this.examples = examples;
     }
-	
+
+    /**
+     * Creates new instance of equivalence class for a given name
+     * @param className
+     */
 	public EquivalenceClass(String className) {
 		this.name = className;
 	}

@@ -1,5 +1,8 @@
 package flink.examplegeneration.input.operatortree;
 
+/**
+ * Enum to describe the operator type
+ */
 public enum OperatorType {
 	LOAD,
 	CROSS,

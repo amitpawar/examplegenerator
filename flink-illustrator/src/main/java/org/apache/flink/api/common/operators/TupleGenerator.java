@@ -15,6 +15,9 @@ import flink.examplegeneration.input.operatortree.SingleOperator;
 import flink.examplegeneration.input.operatortree.OperatorType;
 import flink.examplegeneration.input.operatortree.SingleOperator.JUCCondition;
 
+/**
+ * A class that generates example tuples for a given Flink job
+ */
 public class TupleGenerator {
 
     private List<SingleOperator> operatorTree;
@@ -33,36 +36,12 @@ public class TupleGenerator {
     private static Double joinKeyDouble = -9.9999;
 
 
-    public TupleGenerator(List<SingleOperator> operatorTree, ExecutionEnvironment env, int maxRecords) throws Exception {
-        this.operatorTree = operatorTree;
-        this.env = env;
-        this.maxRecords = maxRecords;
-        downStreamPass(this.operatorTree);
-        setEquivalenceClasses();
-        System.out.println("After Downstream" + Strings.repeat("-", 200));
-        displayExamples(this.operatorTree);
-        upStreamPass(this.operatorTree);
-        afterUpstreampass(this.operatorTree);
-        setEquivalenceClasses();
-        System.out.println("After Upstream" + Strings.repeat("-", 200));
-        displayExamples(this.operatorTree);
-        pruneTuples();
-        System.out.println("After Pruning" + Strings.repeat("-", 200));
-        displayExamples(this.operatorTree);
-        System.out.println("** Synthetic Records");
-
-    }
-
-
-    public List<SingleOperator> getOperatorTree() {
-        return operatorTree;
-    }
-
-    public void setOperatorTree(List<SingleOperator> operatorTree) {
-        this.operatorTree = operatorTree;
-    }
-
-
+    /**
+     * Creates a new instance for the given Flink job
+     * @param env The {@link org.apache.flink.api.java.ExecutionEnvironment} of the respective job
+     * @param maxRecords Maximum tuples to be read from the input sources
+     * @throws Exception
+     */
     public TupleGenerator(ExecutionEnvironment env, int maxRecords) throws Exception {
         OperatorTree operatorTree = new OperatorTree(env);
         this.operatorTree = operatorTree.createOperatorTree();
@@ -83,7 +62,23 @@ public class TupleGenerator {
         System.out.println("** Synthetic Records");
     }
 
-    public void downStreamPass(List<SingleOperator> operatorTree) throws Exception {
+    /**
+     * Gets the operator tree, on which the algorithm performs different passes
+     * and pruning. Helps to check whether an operator consist an example.
+     * @return  The operator tree.
+     */
+    public List<SingleOperator> getOperatorTree() {
+        return operatorTree;
+    }
+
+    /**
+     * Executes first pass of the algorithm, moves in source to sink direction for the given
+     * operator tree. First LOAD operator will have given maxRecords(set in constructor)
+     * number of records, which are then sent to downstream operators.
+     * @param operatorTree The operator tree.
+     * @throws Exception
+     */
+    private void downStreamPass(List<SingleOperator> operatorTree) throws Exception {
         for (int i = 0; i < operatorTree.size(); i++) {
 
             SingleOperator operator = operatorTree.get(i);
@@ -92,6 +87,8 @@ public class TupleGenerator {
 
                 List list = ((GenericDataSourceBase) operator.getOperator()).executeOnCollections(this.env.getConfig());
                 operator.setOperatorOutputAsList(list);
+                if(list.size() < this.maxRecords)
+                    this.maxRecords = list.size();
 
             }
         }
@@ -103,11 +100,14 @@ public class TupleGenerator {
                 }
             }
         }
-        //displayExamples(operatorTree);
-
     }
 
-    public void executeOperatorPerRecord(SingleOperator operator) throws Exception {
+    /**
+     * Executes the given operator with only one input record at a time.
+     * @param operator The operator to execute.
+     * @throws Exception
+     */
+    private void executeOperatorPerRecord(SingleOperator operator) throws Exception {
 
         if (operator.getOperatorType() != OperatorType.SOURCE) {
             if (operator.getOperatorType() == OperatorType.LOAD) {
@@ -125,7 +125,7 @@ public class TupleGenerator {
                     operator.setOperatorOutputAsList(output);
 
                 if (!output.isEmpty())
-                    addToLineageTracer(output.get(0), operator, output.get(0));
+                    addToLineageTracker(output.get(0), operator, output.get(0));
 
             } else {
                 List output = executeIndividualOperator(operator);
@@ -136,13 +136,13 @@ public class TupleGenerator {
                     operator.getOperatorOutputAsList().addAll(output);
                 } else
                     operator.setOperatorOutputAsList(output);
-
             }
 
         }
     }
 
-    public Map<Integer, LinkedHashMap<Integer,Integer>> getCompositeTupleMapper(Tuple sampleTuple, TypeInformation typeInformation){
+
+    private Map<Integer, LinkedHashMap<Integer,Integer>> getCompositeTupleMapper(Tuple sampleTuple, TypeInformation typeInformation){
 
         Map<Integer, LinkedHashMap<Integer,Integer>> compositeTupleMapper = new HashMap<Integer, LinkedHashMap<Integer, Integer>>();
         int ctr = 0;
@@ -165,9 +165,15 @@ public class TupleGenerator {
         return compositeTupleMapper;
     }
 
-
-    //currently allows only one level of nesting Tuple2(Tuple2(),Tuple2())
-    public void executeUsingSemanticInformation(SingleOperator operator) throws IllegalAccessException, InstantiationException {
+    /**
+     * Executes operator using the set semantic information (forwardedfields annotation)
+     * of the given operator
+     * (currently allows only one level of nesting Tuple2(Tuple2(),Tuple2()))
+     * @param operator Operator whose semantic information is set.
+     * @throws IllegalAccessException
+     * @throws InstantiationException
+     */
+    private void executeUsingSemanticInformation(SingleOperator operator) throws IllegalAccessException, InstantiationException {
 
         List input = operator.getParentOperators().get(0).getOperatorOutputAsList();
         boolean isComposite = false;
@@ -223,13 +229,19 @@ public class TupleGenerator {
                     }
                 }
             }
-            addToLineageTracer(inputExample, operator, outputExample);
+            addToLineageTracker(inputExample, operator, outputExample);
             output.add(outputExample);
         }
         operator.setOperatorOutputAsList(output);
     }
 
-    public void addToLineageTracer(Object inputExample, SingleOperator operator, Object outputExample) {
+    /**
+     * Adds the example into a lineage tracker to form the lineage groups.
+     * @param inputExample The input example to be added
+     * @param operator The operator which consumes this input
+     * @param outputExample The result of the operation on the input
+     */
+    private void addToLineageTracker(Object inputExample, SingleOperator operator, Object outputExample) {
 
         if (!checkIfAlreadyInTracer(inputExample, outputExample, operator)) {
             if (this.lineageTracker.containsKey(inputExample)) {
@@ -243,7 +255,14 @@ public class TupleGenerator {
         }
     }
 
-    public boolean checkIfAlreadyInTracer(Object inputExample, Object outputExample, SingleOperator operator) {
+    /**
+     * Checks whether a given entry exists in the tracker
+     * @param inputExample The input example to be added
+     * @param outputExample The result of the operation on the input
+     * @param operator The operator which consumes this input
+     * @return true if present
+     */
+    private boolean checkIfAlreadyInTracer(Object inputExample, Object outputExample, SingleOperator operator) {
         boolean flag = false;
         for (Map<SingleOperator, Object> recordTracer : this.lineageTracker.values()) {
             if (recordTracer.values().contains(inputExample)) {
@@ -254,6 +273,13 @@ public class TupleGenerator {
         return flag;
     }
 
+    //==============================Display Module======================================================================
+    /**
+     * Displays generated examples in a tabular form.
+     * The operator tree should be passed through algorithm's different phases,
+     * before calling this method. Else empty outputs will be displayed.
+     * @param operatorTree The operator tree.
+     */
     public void displayExamples(List<SingleOperator> operatorTree) {
         for (SingleOperator operator : operatorTree) {
             if (operator.getOperatorType() != OperatorType.SOURCE ) {
@@ -289,7 +315,7 @@ public class TupleGenerator {
         }
     }
 
-    public void printTupleObject(Object tuple, List examples){
+    private void printTupleObject(Object tuple, List examples){
         Tuple exampleTuple = (Tuple)tuple;
         for(int ctr = 0; ctr < exampleTuple.getArity();ctr++) {
             int maxLengthOfThisField = lengthCompensator(examples,ctr);
@@ -302,7 +328,7 @@ public class TupleGenerator {
         }
     }
 
-    public int getMaxTupleLengthPrintWise(Object maxLengthTuple, List examples){
+    private int getMaxTupleLengthPrintWise(Object maxLengthTuple, List examples){
         Tuple exampleTuple = (Tuple)maxLengthTuple;
         String displayString = "";
         for(int ctr = 0; ctr < exampleTuple.getArity();ctr++) {
@@ -316,7 +342,7 @@ public class TupleGenerator {
         return displayString.length();
     }
 
-    public int lengthCompensator(List examples, int fieldId){
+    private int lengthCompensator(List examples, int fieldId){
         int lenght = -1;
         for(Object example : examples){
             Tuple exampleTuple = (Tuple)example;
@@ -327,7 +353,7 @@ public class TupleGenerator {
         return lenght;
     }
 
-    public Object getMaxLength(List examples){
+    private Object getMaxLength(List examples){
         Object maxLengthObject = null;
         int length = -1;
         for(Object example: examples){
@@ -339,99 +365,21 @@ public class TupleGenerator {
         return maxLengthObject;
     }
 
-    public boolean hasConstraintRecord(SingleOperator operator){
+    private boolean hasConstraintRecord(SingleOperator operator){
         if(this.operatorToConstraintRecordMap.keySet().contains(operator))
             return true;
         else
             return false;
     }
 
-    public void afterUpstreampass(List<SingleOperator> operatorTree) throws Exception {
-        for (int i = 0; i < operatorTree.size(); i++) {
-            SingleOperator operator = operatorTree.get(i);
+    //===========================================================================================================================
 
-            if (operator.getOperatorType() != OperatorType.SOURCE && operator.getOperatorType() != OperatorType.LOAD) {
-                if(operator.getOperatorType() == OperatorType.FLATMAP)
-                    executeUsingSemanticInformation(operator);
-                else {
-                    List output = executeIndividualOperator(operator);
-                    // System.out.println("After upstream------------" + operator.getOperatorType());
-                    operator.setOperatorOutputAsList(output);
-                }
-                // for (Object object : output)
-                 System.out.println();
-
-            }
-        }
-
-    }
-
-    public List executeIndividualOperator(SingleOperator singleOperator) throws Exception {
-        List<Object> output = new ArrayList();
-        Operator operator = singleOperator.getOperator();
-        if (operator instanceof SingleInputOperator) {
-
-            List<Object> input1 = singleOperator.getParentOperators().get(0).getOperatorOutputAsList();
-
-            for (List<Object> singleExample : Lists.partition(input1, 1)) {
-
-                List outputExample = ((SingleInputOperator) operator).executeOnCollections(singleExample, null, this.env.getConfig());
-                if (!outputExample.isEmpty()) {
-                    if (singleOperator.getOperatorType() == OperatorType.DISTINCT && !output.contains(outputExample.get(0)))
-                        output.add(outputExample.get(0));
-                    if (singleOperator.getOperatorType() != OperatorType.DISTINCT)
-                        output.add(outputExample.get(0));
-
-                    addToLineageTracer(singleExample.get(0), singleOperator, outputExample.get(0));
-                }
-            }
-            //output = ((SingleInputOperator) operator).executeOnCollections(input1, null, this.env.getConfig());
-        }
-        if (operator instanceof DualInputOperator) {
-            List<Object> input1 = singleOperator.getParentOperators().get(0).getOperatorOutputAsList();
-            List<Object> input2 = singleOperator.getParentOperators().get(1).getOperatorOutputAsList();
-
-
-            for (List<Object> singleExample : Lists.partition(input1, 1)) {
-                List outputExamples = ((DualInputOperator) operator).executeOnCollections(singleExample, input2, null, this.env.getConfig());
-                if (!outputExamples.isEmpty()) {
-                    for (Object outputExample : outputExamples) {
-                        if (!output.contains(outputExample)) {
-                            output.add(outputExample);
-                        }
-                        if (singleOperator.getOperatorType() != OperatorType.UNION)
-                            addToLineageTracer(singleExample.get(0), singleOperator, outputExample);
-                        if (singleOperator.getOperatorType() == OperatorType.UNION)
-                            addToLineageTracer(singleExample.get(0), singleOperator, singleExample.get(0));
-                    }
-                }
-            }
-            for (List<Object> singleExample : Lists.partition(input2, 1)) {
-                List outputExamples = ((DualInputOperator) operator).executeOnCollections(input1, singleExample, null, this.env.getConfig());
-                if (!outputExamples.isEmpty()) {
-                    for (Object outputExample : outputExamples) {
-                        if (!output.contains(outputExample)) {
-                            output.add(outputExample);
-                        }
-                        if (singleOperator.getOperatorType() != OperatorType.UNION)
-                            addToLineageTracer(singleExample.get(0), singleOperator, outputExample);
-                        if (singleOperator.getOperatorType() == OperatorType.UNION)
-                            addToLineageTracer(singleExample.get(0), singleOperator, singleExample.get(0));
-
-                    }
-                }
-            }
-            // output = ((DualInputOperator) operator).executeOnCollections(input1, input2, null, this.env.getConfig());
-        }
-        return output;
-    }
-
-    public Object returnRandomTuple(List parentOutput, Random randomGenerator) {
-        int index = randomGenerator.nextInt(parentOutput.size());
-        return parentOutput.get(index);
-    }
-
-    public void upStreamPass(List<SingleOperator> operatorTree) throws Exception {
+    /**
+     * Checks for empty equivalence classes and attempts to fill them with constraint records.
+     * @param operatorTree The operator tree.
+     * @throws Exception
+     */
+    private void upStreamPass(List<SingleOperator> operatorTree) throws Exception {
 
         for (int ctr = operatorTree.size(); ctr > 0; ctr--) {
             SingleOperator operator = operatorTree.get(ctr - 1);
@@ -457,7 +405,7 @@ public class TupleGenerator {
                 if(operator.getOperatorType() == OperatorType.FILTER){
                     for(EquivalenceClass equivalenceClass : operator.getEquivalenceClasses()){
                         if(!equivalenceClass.hasExample()){
-                           fillFilterEquivalenceClass(operator,equivalenceClass);
+                            fillFilterEquivalenceClass(operator,equivalenceClass);
                         }
                     }
                 }
@@ -465,7 +413,115 @@ public class TupleGenerator {
         }
     }
 
-    public void fillFilterEquivalenceClass(SingleOperator operator, EquivalenceClass equivalenceClass) throws Exception {
+    /**
+     * Executes the operators with filled equivalence classes after upstream pass.
+     * @param operatorTree The operator tree.
+     * @throws Exception
+     */
+    private void afterUpstreampass(List<SingleOperator> operatorTree) throws Exception {
+        for (int i = 0; i < operatorTree.size(); i++) {
+            SingleOperator operator = operatorTree.get(i);
+
+            if (operator.getOperatorType() != OperatorType.SOURCE && operator.getOperatorType() != OperatorType.LOAD) {
+                if(operator.getOperatorType() == OperatorType.FLATMAP)
+                    executeUsingSemanticInformation(operator);
+                else {
+                    List output = executeIndividualOperator(operator);
+                    // System.out.println("After upstream------------" + operator.getOperatorType());
+                    operator.setOperatorOutputAsList(output);
+                }
+                // for (Object object : output)
+                 System.out.println();
+
+            }
+        }
+
+    }
+
+    /**
+     * Returns the output for the given operator as list.
+     * @param singleOperator The operator to execute.
+     * @return The operator output list
+     * @throws Exception
+     */
+    private List executeIndividualOperator(SingleOperator singleOperator) throws Exception {
+        List<Object> output = new ArrayList();
+        Operator operator = singleOperator.getOperator();
+        if (operator instanceof SingleInputOperator) {
+
+            List<Object> input1 = singleOperator.getParentOperators().get(0).getOperatorOutputAsList();
+
+            for (List<Object> singleExample : Lists.partition(input1, 1)) {
+
+                List outputExample = ((SingleInputOperator) operator).executeOnCollections(singleExample, null, this.env.getConfig());
+                if (!outputExample.isEmpty()) {
+                    if (singleOperator.getOperatorType() == OperatorType.DISTINCT && !output.contains(outputExample.get(0)))
+                        output.add(outputExample.get(0));
+                    if (singleOperator.getOperatorType() != OperatorType.DISTINCT)
+                        output.add(outputExample.get(0));
+
+                    addToLineageTracker(singleExample.get(0), singleOperator, outputExample.get(0));
+                }
+            }
+            //output = ((SingleInputOperator) operator).executeOnCollections(input1, null, this.env.getConfig());
+        }
+        if (operator instanceof DualInputOperator) {
+            List<Object> input1 = singleOperator.getParentOperators().get(0).getOperatorOutputAsList();
+            List<Object> input2 = singleOperator.getParentOperators().get(1).getOperatorOutputAsList();
+
+
+            for (List<Object> singleExample : Lists.partition(input1, 1)) {
+                List outputExamples = ((DualInputOperator) operator).executeOnCollections(singleExample, input2, null, this.env.getConfig());
+                if (!outputExamples.isEmpty()) {
+                    for (Object outputExample : outputExamples) {
+                        if (!output.contains(outputExample)) {
+                            output.add(outputExample);
+                        }
+                        if (singleOperator.getOperatorType() != OperatorType.UNION)
+                            addToLineageTracker(singleExample.get(0), singleOperator, outputExample);
+                        if (singleOperator.getOperatorType() == OperatorType.UNION)
+                            addToLineageTracker(singleExample.get(0), singleOperator, singleExample.get(0));
+                    }
+                }
+            }
+            for (List<Object> singleExample : Lists.partition(input2, 1)) {
+                List outputExamples = ((DualInputOperator) operator).executeOnCollections(input1, singleExample, null, this.env.getConfig());
+                if (!outputExamples.isEmpty()) {
+                    for (Object outputExample : outputExamples) {
+                        if (!output.contains(outputExample)) {
+                            output.add(outputExample);
+                        }
+                        if (singleOperator.getOperatorType() != OperatorType.UNION)
+                            addToLineageTracker(singleExample.get(0), singleOperator, outputExample);
+                        if (singleOperator.getOperatorType() == OperatorType.UNION)
+                            addToLineageTracker(singleExample.get(0), singleOperator, singleExample.get(0));
+
+                    }
+                }
+            }
+            // output = ((DualInputOperator) operator).executeOnCollections(input1, input2, null, this.env.getConfig());
+        }
+        return output;
+    }
+
+    /**
+     * Returns random tuple from the source
+     * @param parentOutput The sources tuples
+     * @param randomGenerator The {@link java.util.Random} object
+     * @return The random tuple
+     */
+    private Object returnRandomTuple(List parentOutput, Random randomGenerator) {
+        int index = randomGenerator.nextInt(parentOutput.size());
+        return parentOutput.get(index);
+    }
+
+    /**
+     * Fills the empty filter equivalence class.
+     * @param operator The filter operator.
+     * @param equivalenceClass The empty equivalence class.
+     * @throws Exception
+     */
+    private void fillFilterEquivalenceClass(SingleOperator operator, EquivalenceClass equivalenceClass) throws Exception {
 
         String[] tokens = constructUnionCrossConstraintTokens(operator.getParentOperators().get(0).getOperatorOutputType());
         Tuple parentTuple = getConstraintRecord(operator.getParentOperators().get(0),
@@ -478,7 +534,13 @@ public class TupleGenerator {
 
     }
 
-    public void fillUnionCrossEquivalenceClass(SingleOperator operator, EquivalenceClass equivalenceClass) throws Exception {
+    /**
+     * Fills empty Union or Cross Equivalence class.
+     * @param operator The union or cross operator.
+     * @param equivalenceClass The empty equivalence class.
+     * @throws Exception
+     */
+    private void fillUnionCrossEquivalenceClass(SingleOperator operator, EquivalenceClass equivalenceClass) throws Exception {
 
         int parentId = -1;
         if (equivalenceClass.getName().equalsIgnoreCase("FirstTableExample"))
@@ -494,7 +556,12 @@ public class TupleGenerator {
         propagateConstraintRecordUpstream(operator.getParentOperators().get(parentId), parentTuple);
    }
 
-    public void fillJoinEquivalenceClass(SingleOperator operator) throws Exception {
+    /**
+     * Fills Join equivalence class
+     * @param operator The join operator
+     * @throws Exception
+     */
+    private void fillJoinEquivalenceClass(SingleOperator operator) throws Exception {
         JUCCondition joinCondition = operator.getJUCCondition();
 
         //if eqclass is empty, add constraint record to parents such that it fills eqclass
@@ -518,8 +585,17 @@ public class TupleGenerator {
         this.joinKey = null;
     }
 
+    /**
+     * Constructs the tokens for the synthetic constraint record
+     * @param joinCondition The join condition
+     * @param typeInformation The input type information
+     * @param inputNum The input number for the constraint record is being created
+     * @return String array consisting respective tokens
+     * @throws IllegalAccessException
+     * @throws InstantiationException
+     */
     //todo : more than one key columns ? tuple as a key column ?
-    public String[] constructJoinConstraintTokens(JUCCondition joinCondition, TypeInformation typeInformation, int inputNum) throws IllegalAccessException, InstantiationException {
+    private String[] constructJoinConstraintTokens(JUCCondition joinCondition, TypeInformation typeInformation, int inputNum) throws IllegalAccessException, InstantiationException {
 
         int totalFields = typeInformation.getTotalFields();
 
@@ -534,7 +610,12 @@ public class TupleGenerator {
         return tokens;
     }
 
-    public String[] constructUnionCrossConstraintTokens(TypeInformation typeInformation) {
+    /**
+     * Constructs the tokens for the synthetic constraint record
+     * @param typeInformation The input type information
+     * @return String array consisting respective tokens
+     */
+    private String[] constructUnionCrossConstraintTokens(TypeInformation typeInformation) {
         int totalFields = typeInformation.getTotalFields();
         String[] tokens = new String[totalFields];
         for (int i = 0; i < totalFields; i++) {
@@ -543,7 +624,13 @@ public class TupleGenerator {
         return tokens;
     }
 
-    public void convertConstraintRecordToConcreteRecord(SingleOperator child, Tuple constraintRecord) throws Exception {
+    /**
+     * Converts constraint record to concrete record from the input source
+     * @param child The Leaf/LOAD operator
+     * @param constraintRecord The synthetic constraint record.
+     * @throws Exception
+     */
+    private void convertConstraintRecordToConcreteRecord(SingleOperator child, Tuple constraintRecord) throws Exception {
         //child = leaf , parent = basetable
         Map<SingleOperator, List> loadOperatorWithUnUsedExamples = new LinkedHashMap<SingleOperator, List>();
         SingleOperator parent = child.getParentOperators().get(0);
@@ -576,13 +663,18 @@ public class TupleGenerator {
 
                 }
             }
-            // System.out.println("-------------------Changed Constraint Record-----------" + constraintRecord);
-            // child.getOperatorOutputAsList().add(constraintRecord);
         }
     }
 
-
-    public List getUnusedExamplesFromBaseTable(SingleOperator baseOperator, SingleOperator leafOperator, List usedExamples) throws Exception {
+    /**
+     * Returns unused source examples to LOAD operator
+     * @param baseOperator The SOURCE operator
+     * @param leafOperator The LOAD operator
+     * @param usedExamples The examples currently in LOAD operator
+     * @return
+     * @throws Exception
+     */
+    private List getUnusedExamplesFromBaseTable(SingleOperator baseOperator, SingleOperator leafOperator, List usedExamples) throws Exception {
 
         List allExamples = baseOperator.getOperatorOutputAsList();
         List allExamplesAtLeaf = ((SingleInputOperator) leafOperator.getOperator())
@@ -594,8 +686,14 @@ public class TupleGenerator {
 
     }
 
-    //child operator is parent of operator with empty eq class
-    public void propagateConstraintRecordUpstream(SingleOperator childOperator, Tuple constraintRecord) throws Exception {
+    /**
+     * Propagates the constraint record till LOAD operator, then calls method to convert that
+     * record to concrete record.
+     * @param childOperator The parent operator of the operator with empty equivalence class
+     * @param constraintRecord The synthetic constraint record
+     * @throws Exception
+     */
+    private void propagateConstraintRecordUpstream(SingleOperator childOperator, Tuple constraintRecord) throws Exception {
         for (SingleOperator parent : childOperator.getParentOperators()) {
             if (childOperator.getOperatorType() != OperatorType.LOAD) {
                 while (parent.getOperatorType() != OperatorType.LOAD) {
@@ -617,8 +715,9 @@ public class TupleGenerator {
         }
     }
 
+    //=====Test Method (uses semantic information to create parent's constraint record)=======
     //incomplete function, need to handle many scenarios, will not always work due to absent semantic information
-    public void createParentConstraintRecord(int parentId, SingleOperator parent, SingleOperator child) throws IllegalAccessException, InstantiationException {
+    private void createParentConstraintRecord(int parentId, SingleOperator parent, SingleOperator child) throws IllegalAccessException, InstantiationException {
         TypeInformation parentTypeInfo = parent.getOperatorOutputType(); //distinct
         TypeInformation childTypeInfo = child.getOperatorOutputType(); //join
         Tuple constraintRecord = child.getConstraintRecords();
@@ -691,7 +790,11 @@ public class TupleGenerator {
 
     }
 
-    public void pruneTuples() throws Exception {
+    /**
+     * Prunes the unwanted example tuples to make output more concise
+     * @throws Exception
+     */
+    private void pruneTuples() throws Exception {
 
         for (int ctr = operatorTree.size(); ctr > 0; ctr--) {
 
@@ -717,7 +820,12 @@ public class TupleGenerator {
         }
     }
 
-    public void checkPruningIsOK(LinkedHashMap<SingleOperator, Object> recordTracer) throws Exception {
+    /**
+     * Checks whether the record can be pruned or not
+     * @param recordTracer Lineage trace of the record to be pruned
+     * @throws Exception
+     */
+    private void checkPruningIsOK(LinkedHashMap<SingleOperator, Object> recordTracer) throws Exception {
         LinkedList<SingleOperator> operatorList = new LinkedList<SingleOperator>(recordTracer.keySet());
         for (int i = 1; i <= operatorList.size(); i++) {
             SingleOperator operator = operatorList.get(operatorList.size() - i);
@@ -740,7 +848,15 @@ public class TupleGenerator {
         }
     }
 
-    public boolean checkFollowingOperatorsEquivalenceClasses(SingleOperator operator, SingleOperator followingOperator, Object exampleUnderScrutiny) throws Exception {
+    /**
+     * Checks whether pruning does not affect downstream operators
+     * @param operator The operator at pruning stage.
+     * @param followingOperator The downstream operator.
+     * @param exampleUnderScrutiny The example to be pruned
+     * @return true if pruing is not affecting downstream operators' equivalence classes
+     * @throws Exception
+     */
+    private boolean checkFollowingOperatorsEquivalenceClasses(SingleOperator operator, SingleOperator followingOperator, Object exampleUnderScrutiny) throws Exception {
         if (followingOperator != null) {
             Operator operatorToConsider = followingOperator.getOperator();
             List input1 = new ArrayList();
@@ -789,7 +905,12 @@ public class TupleGenerator {
 
     }
 
-    public SingleOperator getFollowingOperator(SingleOperator prevOperator) {
+    /**
+     * Return the downstream operator
+     * @param prevOperator The current operator
+     * @return The downstream operator
+     */
+    private SingleOperator getFollowingOperator(SingleOperator prevOperator) {
         for (int i = 0; i < this.operatorTree.size(); i++) {
             if (this.operatorTree.get(i).getOperatorType() != OperatorType.SOURCE) {
                 for (SingleOperator parent : this.operatorTree.get(i).getParentOperators()) {
@@ -801,22 +922,20 @@ public class TupleGenerator {
         return null;
     }
 
-
-    public Map readExampeTuples() {
-        Map<String, Collection> lineageMap = new HashMap<String, Collection>();
-        for (SingleOperator operator : this.operatorTree) {
-            lineageMap.put(operator.getOperatorName(), operator.getOperatorOutputAsList());
-        }
-        return lineageMap;
-    }
-
-    public void setEquivalenceClasses() {
+    /**
+     * Sets the equivalence class for each operator in the operator tree
+     */
+    private void setEquivalenceClasses() {
         for (SingleOperator operator : this.operatorTree) {
             setOperatorEquivalenceClassess(operator);
         }
     }
 
-    public void setOperatorEquivalenceClassess(SingleOperator operator) {
+    /**
+     * Sets the equivalence class for the given operator
+     * @param operator The operator object
+     */
+    private void setOperatorEquivalenceClassess(SingleOperator operator) {
         if (operator.getOperatorType() == OperatorType.LOAD) {
             List loadExamples = operator.getOperatorOutputAsList();
             SingleEquivalenceClass loadEquivalenceClass = new SingleEquivalenceClass();
@@ -1033,7 +1152,13 @@ public class TupleGenerator {
         }
     }
 
-    public boolean checkCrossTokens(Tuple outputExample, Tuple parentExample) {
+    /**
+     * Checks whether outputexample tuples has parent's tuples
+     * @param outputExample The downstream's output
+     * @param parentExample The parent's output
+     * @return true is downstream has parent's tuples
+     */
+    private boolean checkCrossTokens(Tuple outputExample, Tuple parentExample) {
         boolean[] isParentTokensPresent = new boolean[parentExample.getArity()];
         for (int ctr = 0; ctr < isParentTokensPresent.length; ctr++)
             isParentTokensPresent[ctr] = false;
@@ -1053,9 +1178,12 @@ public class TupleGenerator {
     }
 
 
-    public boolean checkEquivalenceClasses(SingleOperator operator) {
-        /*if(operator.getOperatorType() == OperatorType.FILTER)
-            return true;*/
+    /**
+     * Checks whether equivalence classes are set or not
+     * @param operator The operator under consideration.
+     * @return true if all equivalence classes are set.
+     */
+    private boolean checkEquivalenceClasses(SingleOperator operator) {
 
         boolean allEquivalenceClassCheck = true;
 
@@ -1073,15 +1201,30 @@ public class TupleGenerator {
     }
 
 
-    public Tuple getConstraintRecord(SingleOperator operator, List tokens) throws IllegalAccessException, InstantiationException {
+    /**
+     * Gets the constraint record tuple for the given operator
+     * @param operator The operator that needs constraint tuple
+     * @param tokens The tokens to construct tuple object
+     * @return The constraint tuple
+     * @throws IllegalAccessException
+     * @throws InstantiationException
+     */
+    private Tuple getConstraintRecord(SingleOperator operator, List tokens) throws IllegalAccessException, InstantiationException {
 
         Tuple constraintRecord = drillToBasicType(operator.getOperatorOutputType(), tokens);
         return constraintRecord;
     }
 
 
-    //Todo : check for all types (float,string...)
-    public Tuple drillToBasicType(TypeInformation typeInformation, List tokens) throws IllegalAccessException, InstantiationException {
+    /**
+     * Constructs tuple object by drilling down to basic type
+     * @param typeInformation The typeinformation for the tuple to be constructed
+     * @param tokens Tokens list
+     * @return The tuple object
+     * @throws IllegalAccessException
+     * @throws InstantiationException
+     */
+    private Tuple drillToBasicType(TypeInformation typeInformation, List tokens) throws IllegalAccessException, InstantiationException {
         Tuple valueSetTuple = (Tuple) typeInformation.getTypeClass().newInstance();
 
         for (int ctr = 0; ctr < typeInformation.getArity(); ctr++) {

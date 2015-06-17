@@ -3,6 +3,9 @@ package flink.examplegeneration.algorithm.semantics;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * A Class that defines/sets unions or cross operator's equivalence classes
+ */
 public class UnionCrossEquivalenceClasses {
 	
 	private List<EquivalenceClass> unionEquivalenceClasses = new ArrayList<EquivalenceClass>();
@@ -25,7 +28,11 @@ public class UnionCrossEquivalenceClasses {
 		this.secondTableExample = secondTableExample;
 	}
 
-	public UnionCrossEquivalenceClasses() {
+    /**
+     * Creates new instance of union or cross operator's equivalence class, one from first input
+     * other from second input
+     */
+    public UnionCrossEquivalenceClasses() {
 		this.firstTableExample = new EquivalenceClass("FirstTableExample");
 		this.secondTableExample = new EquivalenceClass("SecondTableExample");
 		this.unionEquivalenceClasses.add(firstTableExample);

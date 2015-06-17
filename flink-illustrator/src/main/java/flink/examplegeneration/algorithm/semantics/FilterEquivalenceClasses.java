@@ -3,7 +3,9 @@ package flink.examplegeneration.algorithm.semantics;
 import java.util.ArrayList;
 import java.util.List;
 
-
+/**
+ * A Class that defines/sets filter operator's equivalence classes
+ */
 public class FilterEquivalenceClasses{
 	
 	private List<EquivalenceClass> filterEquivalenceClasses = new ArrayList<EquivalenceClass>();
@@ -26,6 +28,10 @@ public class FilterEquivalenceClasses{
 		this.filterFail = filterFail;
 	}
 
+    /**
+     * Creates new instance of filter operator's equivalence class, one that passes filter
+     * other that fails the filtering predicate
+     */
 	public FilterEquivalenceClasses() {
 		this.filterPass = new EquivalenceClass("FilterPass");
 		this.filterFail = new EquivalenceClass("FilterFail");

@@ -9,6 +9,9 @@ import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.api.java.tuple.Tuple;
 import flink.examplegeneration.algorithm.semantics.EquivalenceClass;
 
+/**
+ * A Single operator class/object
+ */
 public class SingleOperator {
 
     private String name;
@@ -107,7 +110,9 @@ public class SingleOperator {
     }
 
 
-
+    /**
+     * The Join Union Cross condition class
+     */
     public class JUCCondition {
         private OperatorType operatorType;
         private int firstInput;
