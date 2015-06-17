@@ -38,7 +38,8 @@ public class TupleGenerator {
 
     /**
      * Creates a new instance for the given Flink job
-     * @param env The {@link org.apache.flink.api.java.ExecutionEnvironment} of the respective job
+     *
+     * @param env        The {@link org.apache.flink.api.java.ExecutionEnvironment} of the respective job
      * @param maxRecords Maximum tuples to be read from the input sources
      * @throws Exception
      */
@@ -47,15 +48,18 @@ public class TupleGenerator {
         this.operatorTree = operatorTree.createOperatorTree();
         this.env = env;
         this.maxRecords = maxRecords;
+
         downStreamPass(this.operatorTree);
         setEquivalenceClasses();
         System.out.println("After Downstream" + Strings.repeat("-", 200));
         displayExamples(this.operatorTree);
+
         upStreamPass(this.operatorTree);
         afterUpstreampass(this.operatorTree);
         setEquivalenceClasses();
         System.out.println("After Upstream" + Strings.repeat("-", 200));
         displayExamples(this.operatorTree);
+
         pruneTuples();
         System.out.println("After Pruning" + Strings.repeat("-", 200));
         displayExamples(this.operatorTree);
@@ -65,7 +69,8 @@ public class TupleGenerator {
     /**
      * Gets the operator tree, on which the algorithm performs different passes
      * and pruning. Helps to check whether an operator consist an example.
-     * @return  The operator tree.
+     *
+     * @return The operator tree.
      */
     public List<SingleOperator> getOperatorTree() {
         return operatorTree;
@@ -75,6 +80,7 @@ public class TupleGenerator {
      * Executes first pass of the algorithm, moves in source to sink direction for the given
      * operator tree. First LOAD operator will have given maxRecords(set in constructor)
      * number of records, which are then sent to downstream operators.
+     *
      * @param operatorTree The operator tree.
      * @throws Exception
      */
@@ -87,7 +93,7 @@ public class TupleGenerator {
 
                 List list = ((GenericDataSourceBase) operator.getOperator()).executeOnCollections(this.env.getConfig());
                 operator.setOperatorOutputAsList(list);
-                if(list.size() < this.maxRecords)
+                if (list.size() < this.maxRecords)
                     this.maxRecords = list.size();
 
             }
@@ -104,6 +110,7 @@ public class TupleGenerator {
 
     /**
      * Executes the given operator with only one input record at a time.
+     *
      * @param operator The operator to execute.
      * @throws Exception
      */
@@ -142,9 +149,9 @@ public class TupleGenerator {
     }
 
 
-    private Map<Integer, LinkedHashMap<Integer,Integer>> getCompositeTupleMapper(Tuple sampleTuple, TypeInformation typeInformation){
+    private Map<Integer, LinkedHashMap<Integer, Integer>> getCompositeTupleMapper(Tuple sampleTuple, TypeInformation typeInformation) {
 
-        Map<Integer, LinkedHashMap<Integer,Integer>> compositeTupleMapper = new HashMap<Integer, LinkedHashMap<Integer, Integer>>();
+        Map<Integer, LinkedHashMap<Integer, Integer>> compositeTupleMapper = new HashMap<Integer, LinkedHashMap<Integer, Integer>>();
         int ctr = 0;
 
         for (int l = 0; l < typeInformation.getArity(); l++) {
@@ -169,6 +176,7 @@ public class TupleGenerator {
      * Executes operator using the set semantic information (forwardedfields annotation)
      * of the given operator
      * (currently allows only one level of nesting Tuple2(Tuple2(),Tuple2()))
+     *
      * @param operator Operator whose semantic information is set.
      * @throws IllegalAccessException
      * @throws InstantiationException
@@ -180,31 +188,31 @@ public class TupleGenerator {
         List output = new ArrayList();
         SemanticProperties semanticProperties = operator.getSemanticProperties();
         //0 -> [3]
-        Map<Integer,int[]> mappingFields = new LinkedHashMap<Integer, int[]>();
-        Map<Integer, LinkedHashMap<Integer,Integer>> compositeTupleMapper = new HashMap<Integer, LinkedHashMap<Integer, Integer>>();
+        Map<Integer, int[]> mappingFields = new LinkedHashMap<Integer, int[]>();
+        Map<Integer, LinkedHashMap<Integer, Integer>> compositeTupleMapper = new HashMap<Integer, LinkedHashMap<Integer, Integer>>();
 
         TypeInformation inputTypeInfo = operator.getParentOperators().get(0).getOperatorOutputType();
         int totalFields = inputTypeInfo.getTotalFields();
 
-        for(int i = 0; i < totalFields; i++){
-            int[] thisFieldMapping = semanticProperties.getForwardingTargetFields(0,i).toArray();
-            mappingFields.put(i,thisFieldMapping);
+        for (int i = 0; i < totalFields; i++) {
+            int[] thisFieldMapping = semanticProperties.getForwardingTargetFields(0, i).toArray();
+            mappingFields.put(i, thisFieldMapping);
         }
 
-        if(inputTypeInfo.getArity()  < totalFields){
-            Tuple sampleInputTuple = (Tuple)input.get(0);
+        if (inputTypeInfo.getArity() < totalFields) {
+            Tuple sampleInputTuple = (Tuple) input.get(0);
             isComposite = true;
-            compositeTupleMapper = getCompositeTupleMapper(sampleInputTuple,inputTypeInfo);
+            compositeTupleMapper = getCompositeTupleMapper(sampleInputTuple, inputTypeInfo);
         }
 
-        for(Object inputExample : input){
+        for (Object inputExample : input) {
             Tuple outputExample = (Tuple) operator.getOperatorOutputType().getTypeClass().newInstance();
 
             Iterator fromIt = mappingFields.keySet().iterator();
-            while(fromIt.hasNext()) {
+            while (fromIt.hasNext()) {
                 int from = (Integer) fromIt.next();
                 int[] to = mappingFields.get(from);
-                if(to.length > 0) {
+                if (to.length > 0) {
                     Object fromField;
                     if (isComposite) {
                         Iterator keyIt = compositeTupleMapper.keySet().iterator();
@@ -236,9 +244,37 @@ public class TupleGenerator {
     }
 
     /**
+     * Checks whether forwardedfields annotations are present
+     *
+     * @param operator
+     * @return
+     */
+    private boolean checkForSemanticProperties(SingleOperator operator) {
+        TypeInformation inputTypeInfo = operator.getParentOperators().get(0).getOperatorOutputType();
+        int totalFields = inputTypeInfo.getTotalFields();
+        SemanticProperties semanticProperties = operator.getSemanticProperties();
+        Map<Integer, int[]> mappingFields = new LinkedHashMap<Integer, int[]>();
+        boolean flag = false;
+
+        for (int i = 0; i < totalFields; i++) {
+            int[] thisFieldMapping = semanticProperties.getForwardingTargetFields(0, i).toArray();
+            mappingFields.put(i, thisFieldMapping);
+        }
+
+        for (int i : mappingFields.keySet()) {
+            int[] mappers = mappingFields.get(i);
+            if (mappers.length > 0)
+                flag = true;
+        }
+
+        return flag;
+    }
+
+    /**
      * Adds the example into a lineage tracker to form the lineage groups.
-     * @param inputExample The input example to be added
-     * @param operator The operator which consumes this input
+     *
+     * @param inputExample  The input example to be added
+     * @param operator      The operator which consumes this input
      * @param outputExample The result of the operation on the input
      */
     private void addToLineageTracker(Object inputExample, SingleOperator operator, Object outputExample) {
@@ -257,9 +293,10 @@ public class TupleGenerator {
 
     /**
      * Checks whether a given entry exists in the tracker
-     * @param inputExample The input example to be added
+     *
+     * @param inputExample  The input example to be added
      * @param outputExample The result of the operation on the input
-     * @param operator The operator which consumes this input
+     * @param operator      The operator which consumes this input
      * @return true if present
      */
     private boolean checkIfAlreadyInTracer(Object inputExample, Object outputExample, SingleOperator operator) {
@@ -274,16 +311,18 @@ public class TupleGenerator {
     }
 
     //==============================Display Module======================================================================
+
     /**
      * Displays generated examples in a tabular form.
      * The operator tree should be passed through algorithm's different phases,
      * before calling this method. Else empty outputs will be displayed.
+     *
      * @param operatorTree The operator tree.
      */
     public void displayExamples(List<SingleOperator> operatorTree) {
         for (SingleOperator operator : operatorTree) {
-            if (operator.getOperatorType() != OperatorType.SOURCE ) {
-                if(!operator.getOperatorOutputAsList().isEmpty()) {
+            if (operator.getOperatorType() != OperatorType.SOURCE) {
+                if (!operator.getOperatorOutputAsList().isEmpty()) {
 
                     int dashLength = -1;
                     Object maxLenghtObject = getMaxLength(operator.getOperatorOutputAsList());
@@ -296,18 +335,17 @@ public class TupleGenerator {
                     System.out.println(Strings.repeat("-", dashLength + 5));
                     System.out.println(operator.getOperatorType() + " " + operator.getOperatorName());
                     System.out.println(Strings.repeat("-", dashLength + 5));
-                    // System.out.println();
+
                     for (Object object : operator.getOperatorOutputAsList()) {
                         printTupleObject(object, operator.getOperatorOutputAsList());
-                        if(hasConstraintRecord(operator) && object == this.operatorToConstraintRecordMap.get(operator))
+                        if (hasConstraintRecord(operator) && object == this.operatorToConstraintRecordMap.get(operator))
                             System.out.print("**");
                         System.out.println();
                     }
                     System.out.println(Strings.repeat("-", dashLength + 5));
-                }
-                else {
+                } else {
                     int dashLength = operator.getOperatorName().length();
-                    System.out.println(Strings.repeat("-",dashLength+5));
+                    System.out.println(Strings.repeat("-", dashLength + 5));
                     System.out.println(operator.getOperatorType() + " " + operator.getOperatorName());
                     System.out.println(Strings.repeat("-", dashLength + 5));
                 }
@@ -315,49 +353,49 @@ public class TupleGenerator {
         }
     }
 
-    private void printTupleObject(Object tuple, List examples){
-        Tuple exampleTuple = (Tuple)tuple;
-        for(int ctr = 0; ctr < exampleTuple.getArity();ctr++) {
-            int maxLengthOfThisField = lengthCompensator(examples,ctr);
+    private void printTupleObject(Object tuple, List examples) {
+        Tuple exampleTuple = (Tuple) tuple;
+        for (int ctr = 0; ctr < exampleTuple.getArity(); ctr++) {
+            int maxLengthOfThisField = lengthCompensator(examples, ctr);
             int thisFieldLength = exampleTuple.getField(ctr).toString().length();
             int compensator = 0;
-            if(exampleTuple.getField(ctr).toString().length() < maxLengthOfThisField)
+            if (exampleTuple.getField(ctr).toString().length() < maxLengthOfThisField)
                 compensator = maxLengthOfThisField - thisFieldLength;
-            System.out.print("|"+Strings.repeat(" ",1));
-            System.out.print(exampleTuple.getField(ctr)+Strings.repeat(" ",2+compensator)+"|");
+            System.out.print("|" + Strings.repeat(" ", 1));
+            System.out.print(exampleTuple.getField(ctr) + Strings.repeat(" ", 2 + compensator) + "|");
         }
     }
 
-    private int getMaxTupleLengthPrintWise(Object maxLengthTuple, List examples){
-        Tuple exampleTuple = (Tuple)maxLengthTuple;
+    private int getMaxTupleLengthPrintWise(Object maxLengthTuple, List examples) {
+        Tuple exampleTuple = (Tuple) maxLengthTuple;
         String displayString = "";
-        for(int ctr = 0; ctr < exampleTuple.getArity();ctr++) {
-            int maxLengthOfThisField = lengthCompensator(examples,ctr);
+        for (int ctr = 0; ctr < exampleTuple.getArity(); ctr++) {
+            int maxLengthOfThisField = lengthCompensator(examples, ctr);
             int thisFieldLength = exampleTuple.getField(ctr).toString().length();
             int compensator = 0;
-            if(exampleTuple.getField(ctr).toString().length() < maxLengthOfThisField)
+            if (exampleTuple.getField(ctr).toString().length() < maxLengthOfThisField)
                 compensator = maxLengthOfThisField - thisFieldLength;
-            displayString = displayString + "|"+Strings.repeat(" ",1)+exampleTuple.getField(ctr)+Strings.repeat(" ",2+compensator)+"|";
+            displayString = displayString + "|" + Strings.repeat(" ", 1) + exampleTuple.getField(ctr) + Strings.repeat(" ", 2 + compensator) + "|";
         }
         return displayString.length();
     }
 
-    private int lengthCompensator(List examples, int fieldId){
-        int lenght = -1;
-        for(Object example : examples){
-            Tuple exampleTuple = (Tuple)example;
+    private int lengthCompensator(List examples, int fieldId) {
+        int length = -1;
+        for (Object example : examples) {
+            Tuple exampleTuple = (Tuple) example;
             int tupleLength = exampleTuple.getField(fieldId).toString().length();
-            if(tupleLength > lenght)
-                lenght = tupleLength;
+            if (tupleLength > length)
+                length = tupleLength;
         }
-        return lenght;
+        return length;
     }
 
-    private Object getMaxLength(List examples){
+    private Object getMaxLength(List examples) {
         Object maxLengthObject = null;
         int length = -1;
-        for(Object example: examples){
-            if(example.toString().length() > length) {
+        for (Object example : examples) {
+            if (example.toString().length() > length) {
                 length = example.toString().length();
                 maxLengthObject = example;
             }
@@ -365,8 +403,8 @@ public class TupleGenerator {
         return maxLengthObject;
     }
 
-    private boolean hasConstraintRecord(SingleOperator operator){
-        if(this.operatorToConstraintRecordMap.keySet().contains(operator))
+    private boolean hasConstraintRecord(SingleOperator operator) {
+        if (this.operatorToConstraintRecordMap.keySet().contains(operator))
             return true;
         else
             return false;
@@ -376,6 +414,7 @@ public class TupleGenerator {
 
     /**
      * Checks for empty equivalence classes and attempts to fill them with constraint records.
+     *
      * @param operatorTree The operator tree.
      * @throws Exception
      */
@@ -396,16 +435,15 @@ public class TupleGenerator {
                     //cross union will have 2 eq classes, one for each table
                     for (EquivalenceClass equivalenceClass : operator.getEquivalenceClasses()) {
                         if (!equivalenceClass.hasExample()) {
-                            //System.out.println(equivalenceClass.getName()+" is empty");
                             fillUnionCrossEquivalenceClass(operator, equivalenceClass);
                         }
                     }
                 }
 
-                if(operator.getOperatorType() == OperatorType.FILTER){
-                    for(EquivalenceClass equivalenceClass : operator.getEquivalenceClasses()){
-                        if(!equivalenceClass.hasExample()){
-                            fillFilterEquivalenceClass(operator,equivalenceClass);
+                if (operator.getOperatorType() == OperatorType.FILTER) {
+                    for (EquivalenceClass equivalenceClass : operator.getEquivalenceClasses()) {
+                        if (!equivalenceClass.hasExample()) {
+                            fillFilterEquivalenceClass(operator, equivalenceClass);
                         }
                     }
                 }
@@ -415,6 +453,7 @@ public class TupleGenerator {
 
     /**
      * Executes the operators with filled equivalence classes after upstream pass.
+     *
      * @param operatorTree The operator tree.
      * @throws Exception
      */
@@ -423,15 +462,18 @@ public class TupleGenerator {
             SingleOperator operator = operatorTree.get(i);
 
             if (operator.getOperatorType() != OperatorType.SOURCE && operator.getOperatorType() != OperatorType.LOAD) {
-                if(operator.getOperatorType() == OperatorType.FLATMAP)
-                    executeUsingSemanticInformation(operator);
-                else {
+                if (operator.getOperatorType() == OperatorType.FLATMAP) {
+                    if (checkForSemanticProperties(operator))
+                        executeUsingSemanticInformation(operator);
+                    else {
+                        List output = executeIndividualOperator(operator);
+                        operator.setOperatorOutputAsList(output);
+                    }
+                } else {
                     List output = executeIndividualOperator(operator);
-                    // System.out.println("After upstream------------" + operator.getOperatorType());
                     operator.setOperatorOutputAsList(output);
                 }
-                // for (Object object : output)
-                 System.out.println();
+                System.out.println();
 
             }
         }
@@ -440,6 +482,7 @@ public class TupleGenerator {
 
     /**
      * Returns the output for the given operator as list.
+     *
      * @param singleOperator The operator to execute.
      * @return The operator output list
      * @throws Exception
@@ -463,7 +506,7 @@ public class TupleGenerator {
                     addToLineageTracker(singleExample.get(0), singleOperator, outputExample.get(0));
                 }
             }
-            //output = ((SingleInputOperator) operator).executeOnCollections(input1, null, this.env.getConfig());
+
         }
         if (operator instanceof DualInputOperator) {
             List<Object> input1 = singleOperator.getParentOperators().get(0).getOperatorOutputAsList();
@@ -499,14 +542,15 @@ public class TupleGenerator {
                     }
                 }
             }
-            // output = ((DualInputOperator) operator).executeOnCollections(input1, input2, null, this.env.getConfig());
+
         }
         return output;
     }
 
     /**
      * Returns random tuple from the source
-     * @param parentOutput The sources tuples
+     *
+     * @param parentOutput    The sources tuples
      * @param randomGenerator The {@link java.util.Random} object
      * @return The random tuple
      */
@@ -517,7 +561,8 @@ public class TupleGenerator {
 
     /**
      * Fills the empty filter equivalence class.
-     * @param operator The filter operator.
+     *
+     * @param operator         The filter operator.
      * @param equivalenceClass The empty equivalence class.
      * @throws Exception
      */
@@ -536,7 +581,8 @@ public class TupleGenerator {
 
     /**
      * Fills empty Union or Cross Equivalence class.
-     * @param operator The union or cross operator.
+     *
+     * @param operator         The union or cross operator.
      * @param equivalenceClass The empty equivalence class.
      * @throws Exception
      */
@@ -554,10 +600,11 @@ public class TupleGenerator {
         operator.getParentOperators().get(parentId).setConstraintRecords(parentTuple);
         this.operatorToConstraintRecordMap.put(operator.getParentOperators().get(parentId), parentTuple);
         propagateConstraintRecordUpstream(operator.getParentOperators().get(parentId), parentTuple);
-   }
+    }
 
     /**
      * Fills Join equivalence class
+     *
      * @param operator The join operator
      * @throws Exception
      */
@@ -587,9 +634,10 @@ public class TupleGenerator {
 
     /**
      * Constructs the tokens for the synthetic constraint record
-     * @param joinCondition The join condition
+     *
+     * @param joinCondition   The join condition
      * @param typeInformation The input type information
-     * @param inputNum The input number for the constraint record is being created
+     * @param inputNum        The input number for the constraint record is being created
      * @return String array consisting respective tokens
      * @throws IllegalAccessException
      * @throws InstantiationException
@@ -612,6 +660,7 @@ public class TupleGenerator {
 
     /**
      * Constructs the tokens for the synthetic constraint record
+     *
      * @param typeInformation The input type information
      * @return String array consisting respective tokens
      */
@@ -626,7 +675,8 @@ public class TupleGenerator {
 
     /**
      * Converts constraint record to concrete record from the input source
-     * @param child The Leaf/LOAD operator
+     *
+     * @param child            The Leaf/LOAD operator
      * @param constraintRecord The synthetic constraint record.
      * @throws Exception
      */
@@ -636,7 +686,7 @@ public class TupleGenerator {
         SingleOperator parent = child.getParentOperators().get(0);
         //convert only if its a leaf operator
         if (parent.getOperator() instanceof GenericDataSourceBase) {
-            // System.out.println("UNUSED-----");
+
             List unUsedExamplesAtLeaf = getUnusedExamplesFromBaseTable(parent, child, child.getOperatorOutputAsList());
             loadOperatorWithUnUsedExamples.put(child, unUsedExamplesAtLeaf);
             if (!unUsedExamplesAtLeaf.isEmpty()) {
@@ -668,6 +718,7 @@ public class TupleGenerator {
 
     /**
      * Returns unused source examples to LOAD operator
+     *
      * @param baseOperator The SOURCE operator
      * @param leafOperator The LOAD operator
      * @param usedExamples The examples currently in LOAD operator
@@ -689,7 +740,8 @@ public class TupleGenerator {
     /**
      * Propagates the constraint record till LOAD operator, then calls method to convert that
      * record to concrete record.
-     * @param childOperator The parent operator of the operator with empty equivalence class
+     *
+     * @param childOperator    The parent operator of the operator with empty equivalence class
      * @param constraintRecord The synthetic constraint record
      * @throws Exception
      */
@@ -723,60 +775,58 @@ public class TupleGenerator {
         Tuple constraintRecord = child.getConstraintRecords();
         SemanticProperties semanticProperties = child.getSemanticProperties();
 
-        if(parentTypeInfo.getTotalFields() == childTypeInfo.getTotalFields()) {
-            Tuple parentConstraintTuple = (Tuple)parentTypeInfo.getTypeClass().newInstance();
-            for(int i = 0; i < childTypeInfo.getTotalFields();i++){
+        if (parentTypeInfo.getTotalFields() == childTypeInfo.getTotalFields()) {
+            Tuple parentConstraintTuple = (Tuple) parentTypeInfo.getTypeClass().newInstance();
+            for (int i = 0; i < childTypeInfo.getTotalFields(); i++) {
                 int from = i;
-                int to = semanticProperties.getForwardingSourceField(0,from);
-                parentConstraintTuple.setField(constraintRecord.getField(i),to);
+                int to = semanticProperties.getForwardingSourceField(0, from);
+                parentConstraintTuple.setField(constraintRecord.getField(i), to);
             }
             parent.setConstraintRecords(parentConstraintTuple);
-        }
+        } else {
+            Map<Integer, LinkedHashMap<Integer, Integer>> compositeTupleMapper = new HashMap<Integer, LinkedHashMap<Integer, Integer>>();
 
-        else{
-            Map<Integer, LinkedHashMap<Integer,Integer>> compositeTupleMapper = new HashMap<Integer, LinkedHashMap<Integer, Integer>>();
-
-            if(childTypeInfo.getArity()  < childTypeInfo.getTotalFields()){ //child is composite & parent not
+            if (childTypeInfo.getArity() < childTypeInfo.getTotalFields()) { //child is composite & parent not
                 Tuple sampleChildTuple = child.getConstraintRecords();
                 compositeTupleMapper = getCompositeTupleMapper(sampleChildTuple, childTypeInfo);
 
                 Tuple parentTuple = (Tuple) parentTypeInfo.getTypeClass().newInstance();
                 Iterator tupleIt = compositeTupleMapper.keySet().iterator();
-                while (tupleIt.hasNext()){
-                    int tupleId = (Integer)tupleIt.next();
-                    if(tupleId == parentId){
-                        LinkedHashMap<Integer,Integer> fieldMapper = compositeTupleMapper.get(tupleId);
+                while (tupleIt.hasNext()) {
+                    int tupleId = (Integer) tupleIt.next();
+                    if (tupleId == parentId) {
+                        LinkedHashMap<Integer, Integer> fieldMapper = compositeTupleMapper.get(tupleId);
                         Iterator fieldIt = fieldMapper.keySet().iterator();
-                        while (fieldIt.hasNext()){
+                        while (fieldIt.hasNext()) {
                             int actualKey = (Integer) fieldIt.next();
                             int mappedKey = fieldMapper.get(actualKey);
-                            int parentMapKey = semanticProperties.getForwardingSourceField(parentId,mappedKey);
+                            int parentMapKey = semanticProperties.getForwardingSourceField(parentId, mappedKey);
                             Object fieldVal = ((Tuple) ((Tuple) constraintRecord).getField(tupleId)).getField(actualKey);
-                            parentTuple.setField(fieldVal,parentMapKey);
+                            parentTuple.setField(fieldVal, parentMapKey);
                         }
                     }
                 }
                 parent.setConstraintRecords(parentTuple);
             }
-            if(parentTypeInfo.getArity() < parentTypeInfo.getTotalFields()){ //parent is composite & child not
-                Tuple sampleParentChild = (Tuple)parent.getOperatorOutputAsList().get(0); //assuming it has records
-                compositeTupleMapper = getCompositeTupleMapper(sampleParentChild,parentTypeInfo);
+            if (parentTypeInfo.getArity() < parentTypeInfo.getTotalFields()) { //parent is composite & child not
+                Tuple sampleParentChild = (Tuple) parent.getOperatorOutputAsList().get(0); //assuming it has records
+                compositeTupleMapper = getCompositeTupleMapper(sampleParentChild, parentTypeInfo);
 
-                Tuple parentTuple = (Tuple)parentTypeInfo.getTypeClass().newInstance();
+                Tuple parentTuple = (Tuple) parentTypeInfo.getTypeClass().newInstance();
                 parentTuple = sampleParentChild;
-                for(int k = 0; k < childTypeInfo.getTotalFields();k++){
+                for (int k = 0; k < childTypeInfo.getTotalFields(); k++) {
                     int from = k;
-                    int to = semanticProperties.getForwardingSourceField(0,k);
+                    int to = semanticProperties.getForwardingSourceField(0, k);
                     Iterator tupleIt = compositeTupleMapper.keySet().iterator();
-                    while (tupleIt.hasNext()){
+                    while (tupleIt.hasNext()) {
                         int tupleId = (Integer) tupleIt.next();
-                        LinkedHashMap<Integer,Integer> fieldMapper = compositeTupleMapper.get(tupleId);
+                        LinkedHashMap<Integer, Integer> fieldMapper = compositeTupleMapper.get(tupleId);
                         Iterator fieldIt = fieldMapper.keySet().iterator();
-                        while ((fieldIt.hasNext())){
-                            int key = (Integer)fieldIt.next();
-                            if(fieldMapper.get(key).equals(to)){
+                        while ((fieldIt.hasNext())) {
+                            int key = (Integer) fieldIt.next();
+                            if (fieldMapper.get(key).equals(to)) {
                                 Object fieldVal = constraintRecord.getField(from);
-                                parentTuple.setField(fieldVal,key);
+                                parentTuple.setField(fieldVal, key);
                             }
 
                         }
@@ -792,6 +842,7 @@ public class TupleGenerator {
 
     /**
      * Prunes the unwanted example tuples to make output more concise
+     *
      * @throws Exception
      */
     private void pruneTuples() throws Exception {
@@ -822,6 +873,7 @@ public class TupleGenerator {
 
     /**
      * Checks whether the record can be pruned or not
+     *
      * @param recordTracer Lineage trace of the record to be pruned
      * @throws Exception
      */
@@ -830,16 +882,14 @@ public class TupleGenerator {
         for (int i = 1; i <= operatorList.size(); i++) {
             SingleOperator operator = operatorList.get(operatorList.size() - i);
             SingleOperator followingOperator = getFollowingOperator(operator);
-            /*if (i != 1)
-                followingOperator = operatorList.get(operatorList.size() - i + 1);*/
 
             Object exampleUnderScrutiny = recordTracer.get(operator);
             //remove all instances of the example from the operator
             operator.getOperatorOutputAsList().removeAll(Collections.singleton(exampleUnderScrutiny));
-            if(operator.getOperatorType() == OperatorType.FILTER)
+            if (operator.getOperatorType() == OperatorType.FILTER)
                 operator.getParentOperators().get(0).getOperatorOutputAsList().removeAll(Collections.singleton(exampleUnderScrutiny));
             setOperatorEquivalenceClassess(operator);
-            if (followingOperator != null ) {
+            if (followingOperator != null) {
                 if (!checkEquivalenceClasses(operator) || !checkFollowingOperatorsEquivalenceClasses(operator, followingOperator, exampleUnderScrutiny))
                     operator.getOperatorOutputAsList().add(exampleUnderScrutiny);
 
@@ -850,8 +900,9 @@ public class TupleGenerator {
 
     /**
      * Checks whether pruning does not affect downstream operators
-     * @param operator The operator at pruning stage.
-     * @param followingOperator The downstream operator.
+     *
+     * @param operator             The operator at pruning stage.
+     * @param followingOperator    The downstream operator.
      * @param exampleUnderScrutiny The example to be pruned
      * @return true if pruing is not affecting downstream operators' equivalence classes
      * @throws Exception
@@ -907,6 +958,7 @@ public class TupleGenerator {
 
     /**
      * Return the downstream operator
+     *
      * @param prevOperator The current operator
      * @return The downstream operator
      */
@@ -933,6 +985,7 @@ public class TupleGenerator {
 
     /**
      * Sets the equivalence class for the given operator
+     *
      * @param operator The operator object
      */
     private void setOperatorEquivalenceClassess(SingleOperator operator) {
@@ -1036,8 +1089,7 @@ public class TupleGenerator {
 
                     unionCrossEquivalenceClasses.getSecondTableExample().setExamples(parentExamples);
                 }
-            }
-            else{//union didn't produce any result, both input empty
+            } else {//union didn't produce any result, both input empty
                 unionCrossEquivalenceClasses.getFirstTableExample().setHasExample(false);
                 unionCrossEquivalenceClasses.getSecondTableExample().setHasExample(false);
             }
@@ -1114,32 +1166,30 @@ public class TupleGenerator {
             operator.setEquivalenceClasses(equivalenceClasses);
         }
 
-        if(operator.getOperatorType() == OperatorType.FILTER){
+        if (operator.getOperatorType() == OperatorType.FILTER) {
             FilterEquivalenceClasses filterEquivalenceClasses = new FilterEquivalenceClasses();
             List parentExamples = operator.getParentOperators().get(0).getOperatorOutputAsList();
-            List filterExamples =  operator.getOperatorOutputAsList();
+            List filterExamples = operator.getOperatorOutputAsList();
             List passExamples = new ArrayList();
             List failExamples = new ArrayList();
 
-            for(Object parentExample : parentExamples){
-                if(filterExamples.contains(parentExample))
+            for (Object parentExample : parentExamples) {
+                if (filterExamples.contains(parentExample))
                     passExamples.add(parentExample);
                 else
                     failExamples.add(parentExample);
             }
 
-            if(!passExamples.isEmpty()){
+            if (!passExamples.isEmpty()) {
                 filterEquivalenceClasses.getFilterPass().setHasExample(true);
                 filterEquivalenceClasses.getFilterPass().setExamples(passExamples);
-            }
-            else
+            } else
                 filterEquivalenceClasses.getFilterPass().setHasExample(false);
 
-            if(!failExamples.isEmpty()){
+            if (!failExamples.isEmpty()) {
                 filterEquivalenceClasses.getFilterFail().setHasExample(true);
                 filterEquivalenceClasses.getFilterFail().setExamples(failExamples);
-            }
-            else
+            } else
                 filterEquivalenceClasses.getFilterFail().setHasExample(false);
 
             List<EquivalenceClass> equivalenceClasses = new ArrayList<EquivalenceClass>();
@@ -1154,6 +1204,7 @@ public class TupleGenerator {
 
     /**
      * Checks whether outputexample tuples has parent's tuples
+     *
      * @param outputExample The downstream's output
      * @param parentExample The parent's output
      * @return true is downstream has parent's tuples
@@ -1180,6 +1231,7 @@ public class TupleGenerator {
 
     /**
      * Checks whether equivalence classes are set or not
+     *
      * @param operator The operator under consideration.
      * @return true if all equivalence classes are set.
      */
@@ -1203,8 +1255,9 @@ public class TupleGenerator {
 
     /**
      * Gets the constraint record tuple for the given operator
+     *
      * @param operator The operator that needs constraint tuple
-     * @param tokens The tokens to construct tuple object
+     * @param tokens   The tokens to construct tuple object
      * @return The constraint tuple
      * @throws IllegalAccessException
      * @throws InstantiationException
@@ -1218,8 +1271,9 @@ public class TupleGenerator {
 
     /**
      * Constructs tuple object by drilling down to basic type
+     *
      * @param typeInformation The typeinformation for the tuple to be constructed
-     * @param tokens Tokens list
+     * @param tokens          Tokens list
      * @return The tuple object
      * @throws IllegalAccessException
      * @throws InstantiationException
