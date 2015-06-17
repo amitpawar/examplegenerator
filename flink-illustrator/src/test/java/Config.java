@@ -19,6 +19,10 @@ public class Config {
 		return "src/test/resources/urls";
 	}
 
+	public static String pathToUnMatchingUrls() {
+		return "src/test/resources/unmatchingurls";
+	}
+
 	public static String pathToCoordSet1() {
 		return "/home/amit/thesis/dataflow/coordSet1";
 	}
