@@ -5,9 +5,11 @@ import java.util.*;
 import com.google.common.base.Strings;
 import com.google.common.collect.Lists;
 import flink.examplegeneration.algorithm.semantics.*;
+import org.apache.flink.api.common.ExecutionConfig;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.api.common.typeutils.CompositeType;
 import org.apache.flink.api.java.ExecutionEnvironment;
+import org.apache.flink.api.java.operators.translation.JavaPlan;
 import org.apache.flink.api.java.tuple.Tuple;
 
 import flink.examplegeneration.input.operatortree.OperatorTree;
@@ -22,6 +24,7 @@ public class TupleGenerator {
 
     private List<SingleOperator> operatorTree;
     private ExecutionEnvironment env;
+    private ExecutionConfig config;
     private Map<SingleOperator, Tuple> operatorToConstraintRecordMap = new HashMap<SingleOperator, Tuple>();
     private Object joinKey = null;
     private int maxRecords = -1;
@@ -47,6 +50,31 @@ public class TupleGenerator {
         OperatorTree operatorTree = new OperatorTree(env);
         this.operatorTree = operatorTree.createOperatorTree();
         this.env = env;
+        this.config = env.getConfig();
+        this.maxRecords = maxRecords;
+
+        downStreamPass(this.operatorTree);
+        setEquivalenceClasses();
+        System.out.println("After Downstream" + Strings.repeat("-", 200));
+        displayExamples(this.operatorTree);
+
+        upStreamPass(this.operatorTree);
+        afterUpstreampass(this.operatorTree);
+        setEquivalenceClasses();
+        System.out.println("After Upstream" + Strings.repeat("-", 200));
+        displayExamples(this.operatorTree);
+
+        pruneTuples();
+        System.out.println("After Pruning" + Strings.repeat("-", 200));
+        displayExamples(this.operatorTree);
+        System.out.println("** Synthetic Records");
+    }
+
+    public TupleGenerator(ExecutionConfig config,JavaPlan plan, int maxRecords) throws Exception{
+
+        OperatorTree operatorTree = new OperatorTree(plan);
+        this.operatorTree = operatorTree.createOperatorTree();
+        this.config = config;
         this.maxRecords = maxRecords;
 
         downStreamPass(this.operatorTree);
@@ -91,7 +119,7 @@ public class TupleGenerator {
 
             if (operator.getOperatorType() == OperatorType.SOURCE) {
 
-                List list = ((GenericDataSourceBase) operator.getOperator()).executeOnCollections(this.env.getConfig());
+                List list = ((GenericDataSourceBase) operator.getOperator()).executeOnCollections(this.config);
                 operator.setOperatorOutputAsList(list);
                 if (list.size() < this.maxRecords && !list.isEmpty())
                     this.maxRecords = list.size();
@@ -123,7 +151,7 @@ public class TupleGenerator {
                 Random randomGenerator = new Random();
                 if (!operator.getParentOperators().get(0).getOperatorOutputAsList().isEmpty())
                     inputList.add(returnRandomTuple(operator.getParentOperators().get(0).getOperatorOutputAsList(), randomGenerator));
-                List output = ((SingleInputOperator) operator.getOperator()).executeOnCollections(inputList, null, this.env.getConfig());
+                List output = ((SingleInputOperator) operator.getOperator()).executeOnCollections(inputList, null, this.config);
 
 
                 if (operator.getOperatorOutputAsList() != null)
@@ -496,7 +524,7 @@ public class TupleGenerator {
 
             for (List<Object> singleExample : Lists.partition(input1, 1)) {
 
-                List outputExample = ((SingleInputOperator) operator).executeOnCollections(singleExample, null, this.env.getConfig());
+                List outputExample = ((SingleInputOperator) operator).executeOnCollections(singleExample, null, this.config);
                 if (!outputExample.isEmpty()) {
                     if (singleOperator.getOperatorType() == OperatorType.DISTINCT && !output.contains(outputExample.get(0)))
                         output.add(outputExample.get(0));
@@ -514,7 +542,7 @@ public class TupleGenerator {
 
 
             for (List<Object> singleExample : Lists.partition(input1, 1)) {
-                List outputExamples = ((DualInputOperator) operator).executeOnCollections(singleExample, input2, null, this.env.getConfig());
+                List outputExamples = ((DualInputOperator) operator).executeOnCollections(singleExample, input2, null, this.config);
                 if (!outputExamples.isEmpty()) {
                     for (Object outputExample : outputExamples) {
                         if (!output.contains(outputExample)) {
@@ -528,7 +556,7 @@ public class TupleGenerator {
                 }
             }
             for (List<Object> singleExample : Lists.partition(input2, 1)) {
-                List outputExamples = ((DualInputOperator) operator).executeOnCollections(input1, singleExample, null, this.env.getConfig());
+                List outputExamples = ((DualInputOperator) operator).executeOnCollections(input1, singleExample, null, this.config);
                 if (!outputExamples.isEmpty()) {
                     for (Object outputExample : outputExamples) {
                         if (!output.contains(outputExample)) {
@@ -729,7 +757,7 @@ public class TupleGenerator {
 
         List allExamples = baseOperator.getOperatorOutputAsList();
         List allExamplesAtLeaf = ((SingleInputOperator) leafOperator.getOperator())
-                .executeOnCollections(allExamples, null, this.env.getConfig());
+                .executeOnCollections(allExamples, null, this.config);
 
         allExamplesAtLeaf.removeAll(usedExamples);
 
@@ -933,14 +961,14 @@ public class TupleGenerator {
                 if (input2.isEmpty())
                     input2 = followingOperator.getParentOperators().get(1).getOperatorOutputAsList();
 
-                output = ((DualInputOperator) operatorToConsider).executeOnCollections(input1, input2, null, this.env.getConfig());
+                output = ((DualInputOperator) operatorToConsider).executeOnCollections(input1, input2, null, this.config);
             }
 
             if (operatorToConsider instanceof SingleInputOperator) {
                 if (input1.isEmpty())
                     input1 = followingOperator.getParentOperators().get(0).getOperatorOutputAsList();
 
-                output = ((SingleInputOperator) operatorToConsider).executeOnCollections(input1, null, this.env.getConfig());
+                output = ((SingleInputOperator) operatorToConsider).executeOnCollections(input1, null, this.config);
             }
 
             followingOperator.setOperatorOutputAsList(output);

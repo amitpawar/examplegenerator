@@ -56,6 +56,14 @@ public class OperatorTree {
 		this.operatorTree = new ArrayList<SingleOperator>();
 		this.addedNodes = new ArrayList<String>();
 	}
+
+	public OperatorTree(JavaPlan plan){
+        this.javaPlan = plan;
+        this.optimizer = new Optimizer(new DataStatistics(),new DefaultCostEstimator(), new Configuration());
+        this.optimizedPlan = this.optimizer.compile(this.javaPlan);
+        this.operatorTree = new ArrayList<SingleOperator>();
+        this.addedNodes = new ArrayList<String>();
+    }
 	
 	private boolean isVisited(Operator<?> operator) {
 		return (this.addedNodes.contains(operator.getName()));

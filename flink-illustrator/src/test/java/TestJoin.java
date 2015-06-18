@@ -30,7 +30,7 @@ public class TestJoin {
 
         joinSet.print();
 
-        TupleGenerator tupleGenerator = new TupleGenerator(env,4);
+        TupleGenerator tupleGenerator = new TupleGenerator(env.getConfig(),env.createProgramPlan(),4);
 
         for(SingleOperator operator : tupleGenerator.getOperatorTree()){
             TestCase.assertNotNull(operator.getOperatorOutputAsList());
