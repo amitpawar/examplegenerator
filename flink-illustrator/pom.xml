@@ -11,7 +11,7 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <mahout.version>0.9</mahout.version>
         <flink.version>0.9.0-milestone-1</flink.version>
-        <scala.version>2.10.0</scala.version>
+        <scala.version>2.10.4</scala.version>
         <scala.macros.version>2.1.0</scala.macros.version>
         <log4j.configuration>log4j-test.properties</log4j.configuration>
         <!--<flink.version>0.10-SNAPSHOT</flink.version>-->

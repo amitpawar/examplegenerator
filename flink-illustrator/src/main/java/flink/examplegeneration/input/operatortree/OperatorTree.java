@@ -203,10 +203,7 @@ public class OperatorTree {
                 else
                     opToAdd.setOperatorType(OperatorType.GROUPREDUCE);
 
-                if(this.isDualInputOperatorUsed)
-                    addOperatorDetails(opToAdd, operator);
-                else
-                    addOperatorDetails(opToAdd,operator);
+				addOperatorDetails(opToAdd, operator);
 			}
 
 		}

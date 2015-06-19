@@ -12,6 +12,7 @@ import org.apache.flink.api.java.ExecutionEnvironment;
 import org.apache.flink.api.java.operators.translation.JavaPlan;
 import org.apache.flink.api.java.tuple.Tuple;
 
+
 import flink.examplegeneration.input.operatortree.OperatorTree;
 import flink.examplegeneration.input.operatortree.SingleOperator;
 import flink.examplegeneration.input.operatortree.OperatorType;
