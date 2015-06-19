@@ -11,6 +11,7 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <mahout.version>0.9</mahout.version>
         <flink.version>0.9.0-milestone-1</flink.version>
+        <scala.version>2.10.0</scala.version>
         <!--<flink.version>0.10-SNAPSHOT</flink.version>-->
     </properties>
 
@@ -62,5 +63,60 @@
             <artifactId>flink-clients</artifactId>
             <version>${flink.version}</version>
         </dependency>
+        <!--=====================================================================-->
+        <dependency>
+            <groupId>org.apache.flink</groupId>
+            <artifactId>flink-scala</artifactId>
+            <version>0.9.0-milestone-1-hadoop1</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.scala-lang</groupId>
+            <artifactId>scala-compiler</artifactId>
+            <version>${scala.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.scala-lang</groupId>
+            <artifactId>scala-library</artifactId>
+            <version>${scala.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.scala-lang</groupId>
+            <artifactId>scala-reflect</artifactId>
+            <version>${scala.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.scala-lang</groupId>
+            <artifactId>jline</artifactId>
+            <version>2.10.4</version>
+        </dependency>
     </dependencies>
+    <build>
+        <plugins>
+            <!-- Adding scala source directories to build path -->
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>build-helper-maven-plugin</artifactId>
+                <version>1.7</version>
+                <executions>
+                    <!-- Add src/main/scala to eclipse build path -->
+                    <execution>
+                        <id>add-source</id>
+                        <phase>generate-sources</phase>
+                        <goals>
+                            <goal>add-source</goal>
+                        </goals>
+                        <configuration>
+                            <sources>
+                                <source>src/main/scala</source>
+                            </sources>
+                        </configuration>
+                    </execution>
+                    <!-- Add src/test/scala to eclipse build path -->
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
 </project>

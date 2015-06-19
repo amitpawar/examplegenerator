@@ -21,8 +21,9 @@ package org.apache.flink.api.scala
 import java.io.{BufferedReader, File, FileOutputStream}
 
 import org.apache.flink.api.common.operators.TupleGenerator
-import org.apache.flink.api.java.{JarHelper, ScalaShellRemoteEnvironment}
+import org.apache.flink.api.java.{ JarHelper, ScalaShellRemoteEnvironment}
 import org.apache.flink.util.AbstractID
+
 
 import scala.tools.nsc.interpreter._
 
