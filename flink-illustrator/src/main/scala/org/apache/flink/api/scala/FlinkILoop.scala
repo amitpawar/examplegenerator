@@ -49,8 +49,9 @@ class FlinkILoop(
   }
 
   // local environment
-  val scalaEnv: ExecutionEnvironment = {
-    val scalaEnv = new ExecutionEnvironment(remoteEnv)
+  val scalaEnv: org.apache.flink.api.java.ExecutionEnvironment = {
+    //val scalaEnv = new ExecutionEnvironment(remoteEnv)
+    val scalaEnv = org.apache.flink.api.java.ExecutionEnvironment.getExecutionEnvironment
     scalaEnv
   }
 
@@ -202,7 +203,7 @@ HINT: You can use print() on a DataSet to print the contents to this shell.
   )
 
   def illustrateCommandFunc(args: String): Result = {
-    val tg = new TupleGenerator(scalaEnv.getConfig,scalaEnv.createProgramPlan(), 5)
+    val tg = new TupleGenerator(scalaEnv, 5)
   }
 }
 

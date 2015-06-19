@@ -27,7 +27,7 @@ public class OperatorTree {
 	private Optimizer optimizer;
 	private OptimizedPlan optimizedPlan;
 	private List<SingleOperator> operatorTree;
-	private List<String> addedNodes;
+	private List<Operator> addedNodes;
 	private List<Integer> dataSetIds;
 	private int sourceCount = 0;
 	private boolean isDualInputOperatorUsed = false;
@@ -54,7 +54,7 @@ public class OperatorTree {
 		this.optimizer = new Optimizer(new DataStatistics(),new DefaultCostEstimator(), new Configuration());
 		this.optimizedPlan = this.optimizer.compile(this.javaPlan);
 		this.operatorTree = new ArrayList<SingleOperator>();
-		this.addedNodes = new ArrayList<String>();
+		this.addedNodes = new ArrayList<Operator>();
 	}
 
 	public OperatorTree(JavaPlan plan){
@@ -62,11 +62,11 @@ public class OperatorTree {
         this.optimizer = new Optimizer(new DataStatistics(),new DefaultCostEstimator(), new Configuration());
         this.optimizedPlan = this.optimizer.compile(this.javaPlan);
         this.operatorTree = new ArrayList<SingleOperator>();
-        this.addedNodes = new ArrayList<String>();
+        this.addedNodes = new ArrayList<Operator>();
     }
 	
 	private boolean isVisited(Operator<?> operator) {
-		return (this.addedNodes.contains(operator.getName()));
+		return (this.addedNodes.contains(operator));
 	}
 
     /**
@@ -91,7 +91,7 @@ public class OperatorTree {
 				op.setOperatorOutputType(sourceNode.getOptimizerNode().getOperator().getOperatorInfo().getOutputType());
 				this.operatorTree.add(op);
                 this.operatorSingleOperatorMap.put(sourceNode.getProgramOperator(), op);
-				this.addedNodes.add(sourceNode.getNodeName());
+				this.addedNodes.add(sourceNode.getProgramOperator());
 				if (sourceNode.getOptimizerNode().getOutgoingConnections() != null)
 					addOutgoingNodes(sourceNode.getOptimizerNode().getOutgoingConnections());
 				this.sourceCount++;
@@ -249,7 +249,7 @@ public class OperatorTree {
 
 		this.operatorTree.add(opToAdd);
         this.operatorSingleOperatorMap.put(operator, opToAdd);
-		this.addedNodes.add(operator.getName());
+		this.addedNodes.add(operator);
 	}
 
 
