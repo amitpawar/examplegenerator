@@ -132,7 +132,7 @@
                         <compilerPlugin>
                             <groupId>org.scalamacros</groupId>
                             <artifactId>paradise_2.10.4</artifactId>
-                            <version>${scala.macros.version}</version>
+                            <version>2.1.0-M5</version>
                         </compilerPlugin>
                     </compilerPlugins>
                 </configuration>
