@@ -4,6 +4,7 @@ import java.util.*;
 
 import org.apache.flink.api.common.operators.*;
 import org.apache.flink.api.common.operators.base.*;
+import org.apache.flink.api.java.DataSet;
 import org.apache.flink.api.java.ExecutionEnvironment;
 import org.apache.flink.api.java.operators.translation.JavaPlan;
 import org.apache.flink.api.java.operators.translation.PlanProjectOperator;
@@ -28,12 +29,12 @@ public class OperatorTree {
 	private OptimizedPlan optimizedPlan;
 	private List<SingleOperator> operatorTree;
 	private List<Operator> addedNodes;
-	private List<Integer> dataSetIds;
 	private int sourceCount = 0;
 	private Map<Operator,SingleOperator> operatorSingleOperatorMap = new HashMap<Operator, SingleOperator>();
 
-	
-	private enum InputNum { 
+
+
+    private enum InputNum {
 		FIRST(0),SECOND(1);
 		private int value;
 		private InputNum(int val){
@@ -63,8 +64,17 @@ public class OperatorTree {
         this.operatorTree = new ArrayList<SingleOperator>();
         this.addedNodes = new ArrayList<Operator>();
     }
-	
-	private boolean isVisited(Operator<?> operator) {
+
+	public OperatorTree(ExecutionEnvironment env, DataSet sinkSet) {
+        sinkSet.print();
+		this.javaPlan = env.createProgramPlan();
+		this.optimizer = new Optimizer(new DataStatistics(),new DefaultCostEstimator(), new Configuration());
+		this.optimizedPlan = this.optimizer.compile(this.javaPlan);
+		this.operatorTree = new ArrayList<SingleOperator>();
+		this.addedNodes = new ArrayList<Operator>();
+	}
+
+    private boolean isVisited(Operator<?> operator) {
 		return (this.addedNodes.contains(operator));
 	}
 
@@ -74,15 +84,10 @@ public class OperatorTree {
      */
 	public List<SingleOperator> createOperatorTree() {
 
-        this.dataSetIds = new ArrayList<Integer>();
         int sourceCtr = 0;
 		for (SourcePlanNode sourceNode : this.optimizedPlan.getDataSources()) {
 
-            List<Integer> inputDataSet = new ArrayList<Integer>();
-			inputDataSet.add(this.sourceCount);
-			this.dataSetIds.add(this.sourceCount);
-
-			if (!isVisited(sourceNode.getProgramOperator())) {
+            if (!isVisited(sourceNode.getProgramOperator())) {
 				SingleOperator op = new SingleOperator();
 				op.setOperatorType(OperatorType.SOURCE);
               	op.setOperator(sourceNode.getProgramOperator());
@@ -151,7 +156,7 @@ public class OperatorTree {
 
 		if (operator instanceof JoinOperatorBase) {
 			if (!isVisited(operator)) {
-				opToAdd.setOperatorType(OperatorType.JOIN);
+                opToAdd.setOperatorType(OperatorType.JOIN);
                 addOperatorDetails(opToAdd, operator);
                 addJoinOperatorDetails((JoinOperatorBase) operator, opToAdd);
 				this.sourceCount++;

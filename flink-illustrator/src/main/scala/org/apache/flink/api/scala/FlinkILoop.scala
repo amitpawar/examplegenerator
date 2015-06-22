@@ -21,9 +21,8 @@ package org.apache.flink.api.scala
 import java.io.{BufferedReader, File, FileOutputStream}
 
 import org.apache.flink.api.common.operators.TupleGenerator
-import org.apache.flink.api.java.{ JarHelper, ScalaShellRemoteEnvironment}
+import org.apache.flink.api.java.{JarHelper, ScalaShellRemoteEnvironment}
 import org.apache.flink.util.AbstractID
-
 
 import scala.tools.nsc.interpreter._
 
@@ -49,9 +48,9 @@ class FlinkILoop(
   }
 
   // local environment
-  val scalaEnv: org.apache.flink.api.java.ExecutionEnvironment = {
-    //val scalaEnv = new ExecutionEnvironment(remoteEnv)
-    val scalaEnv = org.apache.flink.api.java.ExecutionEnvironment.getExecutionEnvironment
+  val scalaEnv: ExecutionEnvironment = {
+    val scalaEnv = new ExecutionEnvironment(remoteEnv)
+    //val scalaEnv = org.apache.flink.api.java.ExecutionEnvironment.getExecutionEnvironment
     scalaEnv
   }
 
@@ -203,7 +202,13 @@ HINT: You can use print() on a DataSet to print the contents to this shell.
   )
 
   def illustrateCommandFunc(args: String): Result = {
-    val tg = new TupleGenerator(scalaEnv, 5)
+
+    val tokens = words(args)
+
+    val execEnv = this.intp.valueOfTerm(tokens(0)).get
+
+
+    val tg = new TupleGenerator(execEnv, 5)
   }
 }
 

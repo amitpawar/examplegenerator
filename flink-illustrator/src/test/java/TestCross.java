@@ -32,13 +32,15 @@ public class TestCross {
 
         DataSet crossSet = set1.cross(set2);
 
-        crossSet.print();
+        //crossSet.print();
 
-        TupleGenerator tupleGenerator = new TupleGenerator(env,2);
+        TupleGenerator tupleGenerator = new TupleGenerator(env,crossSet, 2);
 
         for(SingleOperator operator : tupleGenerator.getOperatorTree()){
             TestCase.assertNotNull(operator.getOperatorOutputAsList());
         }
+        crossSet.print();
+        env.execute();
     }
 
     public static class OneReader implements

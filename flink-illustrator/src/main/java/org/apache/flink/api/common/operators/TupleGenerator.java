@@ -8,6 +8,7 @@ import flink.examplegeneration.algorithm.semantics.*;
 import org.apache.flink.api.common.ExecutionConfig;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.api.common.typeutils.CompositeType;
+import org.apache.flink.api.java.DataSet;
 import org.apache.flink.api.java.ExecutionEnvironment;
 import org.apache.flink.api.java.operators.translation.JavaPlan;
 import org.apache.flink.api.java.tuple.Tuple;
@@ -70,6 +71,55 @@ public class TupleGenerator {
         displayExamples(this.operatorTree);
         System.out.println("** Synthetic Records");
     }
+
+    public TupleGenerator (Object environ, Object maxRecords) throws Exception{
+        OperatorTree operatorTree = new OperatorTree((ExecutionEnvironment)environ);
+        this.operatorTree = operatorTree.createOperatorTree();
+        this.env = (ExecutionEnvironment) environ;
+        this.config = env.getConfig();
+        this.maxRecords = (Integer) maxRecords;
+
+        downStreamPass(this.operatorTree);
+        setEquivalenceClasses();
+        System.out.println("After Downstream" + Strings.repeat("-", 200));
+        displayExamples(this.operatorTree);
+
+        upStreamPass(this.operatorTree);
+        afterUpstreampass(this.operatorTree);
+        setEquivalenceClasses();
+        System.out.println("After Upstream" + Strings.repeat("-", 200));
+        displayExamples(this.operatorTree);
+
+        pruneTuples();
+        System.out.println("After Pruning" + Strings.repeat("-", 200));
+        displayExamples(this.operatorTree);
+        System.out.println("** Synthetic Records");
+    }
+
+    public TupleGenerator(ExecutionEnvironment env, DataSet sinkSet, int maxRecords) throws Exception {
+        OperatorTree operatorTree = new OperatorTree(env, sinkSet);
+        this.operatorTree = operatorTree.createOperatorTree();
+        this.env = env;
+        this.config = env.getConfig();
+        this.maxRecords = maxRecords;
+
+        downStreamPass(this.operatorTree);
+        setEquivalenceClasses();
+        System.out.println("After Downstream" + Strings.repeat("-", 200));
+        displayExamples(this.operatorTree);
+
+        upStreamPass(this.operatorTree);
+        afterUpstreampass(this.operatorTree);
+        setEquivalenceClasses();
+        System.out.println("After Upstream" + Strings.repeat("-", 200));
+        displayExamples(this.operatorTree);
+
+        pruneTuples();
+        System.out.println("After Pruning" + Strings.repeat("-", 200));
+        displayExamples(this.operatorTree);
+        System.out.println("** Synthetic Records");
+    }
+
 
     public TupleGenerator(ExecutionConfig config,JavaPlan plan, int maxRecords) throws Exception{
 
@@ -711,16 +761,15 @@ public class TupleGenerator {
      */
     private void convertConstraintRecordToConcreteRecord(SingleOperator child, Tuple constraintRecord) throws Exception {
         //child = leaf , parent = basetable
-        Map<SingleOperator, List> loadOperatorWithUnUsedExamples = new LinkedHashMap<SingleOperator, List>();
         SingleOperator parent = child.getParentOperators().get(0);
         //convert only if its a leaf operator
         if (parent.getOperator() instanceof GenericDataSourceBase) {
 
             List unUsedExamplesAtLeaf = getUnusedExamplesFromBaseTable(parent, child, child.getOperatorOutputAsList());
-            loadOperatorWithUnUsedExamples.put(child, unUsedExamplesAtLeaf);
+
             if (!unUsedExamplesAtLeaf.isEmpty()) {
                 for (int i = 0; i < constraintRecord.getArity(); i++) {
-                    if (constraintRecord.getField(i) == this.joinKeyString ||
+                    if (constraintRecord.getField(i).equals(this.joinKeyString) ||
                             constraintRecord.getField(i) == this.joinKeyInteger ||
                             constraintRecord.getField(i) == this.joinKeyLong ||
                             constraintRecord.getField(i) == this.joinKeyDouble) {
@@ -730,7 +779,7 @@ public class TupleGenerator {
                             this.joinKey = ((Tuple) returnRandomTuple(unUsedExamplesAtLeaf, random)).getField(i);
                         constraintRecord.setField(this.joinKey, i);
                     }
-                    if (constraintRecord.getField(i) == this.dontCareString ||
+                    if (constraintRecord.getField(i).equals(this.dontCareString) ||
                             constraintRecord.getField(i) == this.dontCareDouble ||
                             constraintRecord.getField(i) == this.dontCareLong ||
                             constraintRecord.getField(i) == this.dontCareInteger) {
