@@ -30,8 +30,7 @@ public class OperatorTree {
 	private List<Operator> addedNodes;
 	private List<Integer> dataSetIds;
 	private int sourceCount = 0;
-	private boolean isDualInputOperatorUsed = false;
-    private Map<Operator,SingleOperator> operatorSingleOperatorMap = new HashMap<Operator, SingleOperator>();
+	private Map<Operator,SingleOperator> operatorSingleOperatorMap = new HashMap<Operator, SingleOperator>();
 
 	
 	private enum InputNum { 
@@ -153,8 +152,7 @@ public class OperatorTree {
 		if (operator instanceof JoinOperatorBase) {
 			if (!isVisited(operator)) {
 				opToAdd.setOperatorType(OperatorType.JOIN);
-                this.isDualInputOperatorUsed = true;
-				addOperatorDetails(opToAdd, operator);
+                addOperatorDetails(opToAdd, operator);
                 addJoinOperatorDetails((JoinOperatorBase) operator, opToAdd);
 				this.sourceCount++;
 
@@ -164,8 +162,7 @@ public class OperatorTree {
 		if (operator instanceof CrossOperatorBase) {
 			if (!isVisited(operator)) {
 				opToAdd.setOperatorType(OperatorType.CROSS);
-                this.isDualInputOperatorUsed = true;
-				addOperatorDetails(opToAdd, operator);
+                addOperatorDetails(opToAdd, operator);
 				this.sourceCount++;
 			}
 		}
@@ -180,7 +177,6 @@ public class OperatorTree {
 		if (operator instanceof Union<?>) {
 			if (!isVisited(operator)) {
 				opToAdd.setOperatorType(OperatorType.UNION);
-                this.isDualInputOperatorUsed = true;
                 addOperatorDetails(opToAdd, operator);
                 this.sourceCount++;
 			}
@@ -211,10 +207,7 @@ public class OperatorTree {
         if(operator instanceof ReduceOperatorBase){
             if(!isVisited(operator)){
                 opToAdd.setOperatorType(OperatorType.REDUCE);
-                if(this.isDualInputOperatorUsed)
-                    addOperatorDetails(opToAdd, operator);
-                else
-                    addOperatorDetails(opToAdd,operator);
+                addOperatorDetails(opToAdd,operator);
             }
         }
 		
