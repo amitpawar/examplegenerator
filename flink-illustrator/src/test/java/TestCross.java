@@ -32,8 +32,6 @@ public class TestCross {
 
         DataSet crossSet = set1.cross(set2);
 
-        //crossSet.print();
-
         TupleGenerator tupleGenerator = new TupleGenerator(env,crossSet, 2);
 
         for(SingleOperator operator : tupleGenerator.getOperatorTree()){
