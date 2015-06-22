@@ -13,7 +13,6 @@ import org.apache.flink.api.java.ExecutionEnvironment;
 import org.apache.flink.api.java.operators.translation.JavaPlan;
 import org.apache.flink.api.java.tuple.Tuple;
 
-
 import flink.examplegeneration.input.operatortree.OperatorTree;
 import flink.examplegeneration.input.operatortree.SingleOperator;
 import flink.examplegeneration.input.operatortree.OperatorType;
@@ -72,12 +71,25 @@ public class TupleGenerator {
         System.out.println("** Synthetic Records");
     }
 
-    public TupleGenerator (Object environ, Object maxRecords) throws Exception{
-        OperatorTree operatorTree = new OperatorTree((ExecutionEnvironment)environ);
+    public TupleGenerator (Object environ, Object sinkOperator) throws Exception{
+        OperatorTree operatorTree =  null;
+        if (!(environ instanceof ExecutionEnvironment))
+            throw new Exception("First argument should be an environment");
+
+        if(sinkOperator instanceof org.apache.flink.api.java.operators.Operator){
+            ((org.apache.flink.api.java.operators.Operator)sinkOperator).print();
+            operatorTree = new OperatorTree((ExecutionEnvironment)environ);
+        }
+
+        if(sinkOperator instanceof DataSet){
+            operatorTree = new OperatorTree((ExecutionEnvironment)environ,(DataSet)sinkOperator);
+        }
+
+
         this.operatorTree = operatorTree.createOperatorTree();
         this.env = (ExecutionEnvironment) environ;
         this.config = env.getConfig();
-        this.maxRecords = (Integer) maxRecords;
+        this.maxRecords = 5;
 
         downStreamPass(this.operatorTree);
         setEquivalenceClasses();

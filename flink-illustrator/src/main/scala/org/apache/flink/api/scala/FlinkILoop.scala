@@ -206,9 +206,10 @@ HINT: You can use print() on a DataSet to print the contents to this shell.
     val tokens = words(args)
 
     val execEnv = this.intp.valueOfTerm(tokens(0)).get
+    val sink = this.intp.valueOfTerm(tokens(1)).get
 
 
-    val tg = new TupleGenerator(execEnv, 5)
+    val tg = new TupleGenerator(execEnv, sink)
   }
 }
 
