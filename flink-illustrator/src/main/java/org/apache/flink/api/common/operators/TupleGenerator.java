@@ -74,17 +74,18 @@ public class TupleGenerator {
     public TupleGenerator (Object environ, Object sinkOperator) throws Exception{
         OperatorTree operatorTree =  null;
         if (!(environ instanceof ExecutionEnvironment))
-            throw new Exception("First argument should be an environment");
+            throw new Exception("First argument should be a java execution environment");
 
         if(sinkOperator instanceof org.apache.flink.api.java.operators.Operator){
             ((org.apache.flink.api.java.operators.Operator)sinkOperator).print();
             operatorTree = new OperatorTree((ExecutionEnvironment)environ);
         }
-
-        if(sinkOperator instanceof DataSet){
-            operatorTree = new OperatorTree((ExecutionEnvironment)environ,(DataSet)sinkOperator);
+        else {
+            if (sinkOperator instanceof DataSet) {
+                operatorTree = new OperatorTree((ExecutionEnvironment) environ, (DataSet) sinkOperator);
+            } else
+                throw new Exception("Please pass the Sink operator or dataset");
         }
-
 
         this.operatorTree = operatorTree.createOperatorTree();
         this.env = (ExecutionEnvironment) environ;

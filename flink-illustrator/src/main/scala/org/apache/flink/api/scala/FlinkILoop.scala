@@ -198,7 +198,7 @@ HINT: You can use print() on a DataSet to print the contents to this shell.
   override def commands:List[LoopCommand] = standardCommands ++ illustrateCommand
 
   lazy val illustrateCommand : List[LoopCommand] = List(
-    LoopCommand.cmd("ILLUSTRATE","<ExecutionEnvironment,int maximumRecords>","gets sample tuples", illustrateCommandFunc)
+    LoopCommand.cmd("ILLUSTRATE","<ExecutionEnvironment,Sink Operator/Dataset>","gets sample tuples", illustrateCommandFunc)
   )
 
   def illustrateCommandFunc(args: String): Result = {
