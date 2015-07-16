@@ -818,7 +818,7 @@ public class TupleGenerator {
      */
     private List getUnusedExamplesFromBaseTable(SingleOperator baseOperator, SingleOperator leafOperator, List usedExamples) throws Exception {
 
-        int toIndex = (baseOperator.getOperatorOutputAsList().size() < 100) ? baseOperator.getOperatorOutputAsList().size() : 100;
+        int toIndex = (baseOperator.getOperatorOutputAsList().size() < 101) ? baseOperator.getOperatorOutputAsList().size() : 100;
         List allExamples = baseOperator.getOperatorOutputAsList().subList(0,toIndex);
         List allExamplesAtLeaf = ((SingleInputOperator) leafOperator.getOperator())
                 .executeOnCollections(allExamples, null, this.config);
