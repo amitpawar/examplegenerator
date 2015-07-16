@@ -17,7 +17,7 @@ import java.util.regex.Pattern;
 
 public class TestLargeInput1 {
 
-    @Test
+
     public void testReddit() throws Exception{
 
         ExecutionEnvironment environment = ExecutionEnvironment.getExecutionEnvironment();
