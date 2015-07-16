@@ -38,7 +38,7 @@ public class TestCross {
             TestCase.assertNotNull(operator.getOperatorOutputAsList());
         }
         crossSet.printOnTaskManager("OutputSink");
-        env.execute();
+        //env.execute();   //uncomment only for local testing
     }
 
     public static class OneReader implements
