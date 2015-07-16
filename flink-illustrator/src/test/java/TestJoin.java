@@ -28,7 +28,7 @@ public class TestJoin {
 
         DataSet joinSet = visitSet.join(urlSet).where(1).equalTo(0);
 
-        joinSet.print();
+        joinSet.printOnTaskManager("JoinEx");
 
         TupleGenerator tupleGenerator = new TupleGenerator(env.getConfig(),env.createProgramPlan(),4);
 

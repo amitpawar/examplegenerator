@@ -29,7 +29,7 @@ public class TestFilter {
         DataSet<Tuple4<Integer,String,Integer,Double>> crossSet = set1.cross(filterSet).projectFirst(0)
                 .projectFirst(1).projectSecond(0).projectSecond(1);
 
-        crossSet.print();
+        crossSet.printOnTaskManager("OutputSink");
         TupleGenerator tupleGenerator = new TupleGenerator(env,2);
 
         for(SingleOperator operator : tupleGenerator.getOperatorTree()){

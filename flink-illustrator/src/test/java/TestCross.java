@@ -37,7 +37,7 @@ public class TestCross {
         for(SingleOperator operator : tupleGenerator.getOperatorTree()){
             TestCase.assertNotNull(operator.getOperatorOutputAsList());
         }
-        crossSet.print();
+        crossSet.printOnTaskManager("OutputSink");
         env.execute();
     }
 
@@ -46,7 +46,7 @@ public class TestCross {
 
         private final Pattern SEPARATOR = Pattern.compile("[ \t,]");
 
-        // Reads Visit data-set from flat file into tuples of <User,URL>
+
         public void flatMap(String readLineFromFile,
                             Collector<Tuple2<Integer, String>> collector) throws Exception {
 
@@ -67,7 +67,7 @@ public class TestCross {
 
         private final Pattern SEPARATOR = Pattern.compile("[ \t,]");
 
-        // Reads Visit data-set from flat file into tuples of <User,URL>
+
         public void flatMap(String readLineFromFile,
                             Collector<Tuple2<Integer, Double>> collector) throws Exception {
 

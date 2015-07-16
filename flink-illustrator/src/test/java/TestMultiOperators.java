@@ -30,7 +30,7 @@ public class TestMultiOperators {
 
         DataSet projectSet = joinSet.project(1);
 
-        projectSet.print();
+        projectSet.printOnTaskManager("OutputSink");
 
         TupleGenerator tupleGenerator = new TupleGenerator(env,4);
 
@@ -40,7 +40,7 @@ public class TestMultiOperators {
     }
 
     @Test
-    public void testUnionFilter()throws Exception {
+    public void testUnionFilterJoin()throws Exception {
 
         DataSource<String> visits = env.readTextFile(Config.pathToVisits());
         DataSource<String> visitsEU = env.readTextFile(Config.pathToVisitsEU());
@@ -55,7 +55,7 @@ public class TestMultiOperators {
 
         DataSet<Tuple2<Tuple2<String, String>, Tuple2<String, Long>>> joinSet = visitsUnion.join(filteredUrls).where(1).equalTo(0);
 
-        joinSet.print();
+        joinSet.printOnTaskManager("OutputSink");
 
         TupleGenerator tupleGenerator = new TupleGenerator(env,2);
 
@@ -79,7 +79,7 @@ public class TestMultiOperators {
 
         DataSet outputSet = visitsUnion.cross(crossSet);
 
-        outputSet.print();
+        outputSet.printOnTaskManager("OutputSink");
 
         TupleGenerator tupleGenerator = new TupleGenerator(env,2);
 

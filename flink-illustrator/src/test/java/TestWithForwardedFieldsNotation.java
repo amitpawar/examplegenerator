@@ -11,7 +11,6 @@ import org.apache.flink.api.java.tuple.Tuple3;
 import org.apache.flink.util.Collector;
 import org.junit.Test;
 
-
 public class TestWithForwardedFieldsNotation {
 
     @Test
@@ -29,7 +28,7 @@ public class TestWithForwardedFieldsNotation {
 
         DataSet<Tuple3<String, String, Long>> printSet = joinSet.flatMap(new PrintResultWithAnnotation());
 
-        printSet.print();
+        printSet.printOnTaskManager("PrintSet");
 
         TupleGenerator tupleGenerator = new TupleGenerator(env, 4);
 
@@ -37,6 +36,7 @@ public class TestWithForwardedFieldsNotation {
             TestCase.assertNotNull(operator.getOperatorOutputAsList());
         }
     }
+
 
     @FunctionAnnotation.ForwardedFields("f0.f0->f0;f0.f1->f1;f1.f1->f2")
     public static class PrintResultWithAnnotation

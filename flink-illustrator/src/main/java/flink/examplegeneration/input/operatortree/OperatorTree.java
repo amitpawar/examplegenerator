@@ -65,8 +65,8 @@ public class OperatorTree {
         this.addedNodes = new ArrayList<Operator>();
     }
 
-	public OperatorTree(ExecutionEnvironment env, DataSet sinkSet) {
-        sinkSet.print();
+	public OperatorTree(ExecutionEnvironment env, DataSet sinkSet) throws Exception {
+        sinkSet.printOnTaskManager("sink for ILLUSTRATOR");
 		this.javaPlan = env.createProgramPlan();
 		this.optimizer = new Optimizer(new DataStatistics(),new DefaultCostEstimator(), new Configuration());
 		this.optimizedPlan = this.optimizer.compile(this.javaPlan);

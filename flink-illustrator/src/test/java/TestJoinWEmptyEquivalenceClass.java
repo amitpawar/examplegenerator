@@ -27,7 +27,7 @@ public class TestJoinWEmptyEquivalenceClass {
 
         DataSet joinSet = visitSet.join(urlSet).where(1).equalTo(0);
 
-        joinSet.print();
+        joinSet.printOnTaskManager("OutputSink");
 
         TupleGenerator tupleGenerator = new TupleGenerator(env,4);
 

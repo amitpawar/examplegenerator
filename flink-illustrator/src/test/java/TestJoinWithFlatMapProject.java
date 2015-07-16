@@ -29,7 +29,7 @@ public class TestJoinWithFlatMapProject {
 
         DataSet projectSet = printSet.project(1,2);
 
-        projectSet.print();
+        projectSet.printOnTaskManager("OutputSink");
 
         TupleGenerator tupleGenerator = new TupleGenerator(env,4);
 

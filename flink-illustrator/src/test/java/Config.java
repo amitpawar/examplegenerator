@@ -35,6 +35,9 @@ public class Config {
 
     public static String pathToSet2(){return "src/test/resources/CrossInput2";}
 
+    public static String pathToEmptyCrossSet(){return  "src/test/resources/emptyCrossInput";}
+
+	public static String pathToEmptyVisits(){return  "src/test/resources/emptyVisits";}
 
 	public static String outputPath() {
 		return "src/resources/output";

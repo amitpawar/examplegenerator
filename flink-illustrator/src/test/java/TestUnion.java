@@ -32,7 +32,7 @@ public class TestUnion {
 
         DataSet<Tuple3<String, String, Integer>> visitsUnion = visitSet.union(visitEUSet);
 
-        visitsUnion.print();
+        visitsUnion.printOnTaskManager("Example");
 
         TupleGenerator tupleGenerator = new TupleGenerator(env,2);
 
@@ -46,7 +46,7 @@ public class TestUnion {
 
         private final Pattern SEPARATOR = Pattern.compile("[ \t,]");
 
-        // Reads Visit data-set from flat file into tuples of <User,URL>
+        // Reads Visit data-set from flat file into tuples of <User,URL, urlCount>
         public void flatMap(String readLineFromFile,
                             Collector<Tuple3<String, String, Integer>> collector) throws Exception {
 
