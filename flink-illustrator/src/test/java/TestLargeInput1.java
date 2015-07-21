@@ -25,7 +25,7 @@ public class TestLargeInput1 {
         DataSource<Integer> idSource = environment.fromCollection(idList);
         DataSet idSet = idSource.flatMap(new IDReader());
 
-        DataSource redditSoruce = environment.readTextFile("/home/amit/thesis/inputs/submissions.csv");
+        DataSource redditSoruce = environment.readTextFile("/home/amit/Downloads/soc-pokec-relationships.txt");
         DataSet redditSet = redditSoruce.flatMap(new CSVReader());
 
         DataSet joinSet = idSet.join(redditSet).where(0).equalTo(0);
@@ -37,6 +37,8 @@ public class TestLargeInput1 {
         for(SingleOperator operator : tupleGenerator.getOperatorTree()){
             TestCase.assertNotNull(operator.getOperatorOutputAsList());
         }
+       /* environment.setParallelism(1);
+        environment.execute();*/
     }
 
     public ArrayList<Integer> randomArrayList(int n)
@@ -64,7 +66,7 @@ public class TestLargeInput1 {
                 String[] tokens = SEPARATOR.split(readLineFromFile);
 
                 String id = tokens[0];
-                String title = tokens[3];
+                String title = tokens[1];
 
                 collector.collect(new Tuple2<String, String>(id, title));
             }

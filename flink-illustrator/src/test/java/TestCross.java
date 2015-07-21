@@ -26,8 +26,8 @@ public class TestCross {
 
         DataSet<Tuple2<Integer, String>> set1 = input1.flatMap(new OneReader());
 
-
-        DataSet<Tuple2<Integer, Double>> set2 = input2.flatMap(new TwoReader());
+        TwoReader reader = new TwoReader();
+        DataSet<Tuple2<Integer, Double>> set2 = input2.flatMap(reader);
 
 
         DataSet crossSet = set1.cross(set2);

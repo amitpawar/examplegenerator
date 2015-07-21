@@ -6,8 +6,11 @@ import com.google.common.base.Strings;
 import com.google.common.collect.Lists;
 import flink.examplegeneration.algorithm.semantics.*;
 import org.apache.flink.api.common.ExecutionConfig;
+import org.apache.flink.api.common.io.InputFormat;
+import org.apache.flink.api.common.operators.util.UserCodeWrapper;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.api.common.typeutils.CompositeType;
+import org.apache.flink.api.common.typeutils.TypeSerializer;
 import org.apache.flink.api.java.DataSet;
 import org.apache.flink.api.java.ExecutionEnvironment;
 import org.apache.flink.api.java.operators.translation.JavaPlan;
@@ -17,6 +20,8 @@ import flink.examplegeneration.input.operatortree.OperatorTree;
 import flink.examplegeneration.input.operatortree.SingleOperator;
 import flink.examplegeneration.input.operatortree.OperatorType;
 import flink.examplegeneration.input.operatortree.SingleOperator.JUCCondition;
+import org.apache.flink.configuration.Configuration;
+import org.apache.flink.core.io.InputSplit;
 
 /**
  * A class that generates example tuples for a given Flink job
@@ -183,7 +188,8 @@ public class TupleGenerator {
 
             if (operator.getOperatorType() == OperatorType.SOURCE) {
 
-                List list = ((GenericDataSourceBase) operator.getOperator()).executeOnCollections(this.config);
+                //List list = ((GenericDataSourceBase) operator.getOperator()).executeOnCollections(this.config);
+                List list = sourceExecuteOnCollection((GenericDataSourceBase)operator.getOperator(),this.config);
                 operator.setOperatorOutputAsList(list);
                 if (list.size() < this.maxRecords && !list.isEmpty())
                     this.maxRecords = list.size();
@@ -199,6 +205,37 @@ public class TupleGenerator {
             }
         }
     }
+
+    private List sourceExecuteOnCollection(GenericDataSourceBase source,ExecutionConfig config ) throws Exception{
+        UserCodeWrapper formatWrapper = source.getFormatWrapper();
+
+        InputFormat inputFormat = (InputFormat)formatWrapper.getUserCodeObject();
+        inputFormat.configure(new Configuration());
+        ArrayList result = new ArrayList();
+        InputSplit[] splits = inputFormat.createInputSplits(1);
+        TypeSerializer serializer = source.getOperatorInfo().getOutputType().createSerializer(config);
+        InputSplit[] var6 = splits;
+        int var7 = splits.length;
+        int counter = 0;
+
+        for(int var8 = 0; var8 < var7; ++var8) {
+            InputSplit split = var6[var8];
+            inputFormat.open(split);
+
+            while(!inputFormat.reachedEnd() && counter < 3000) {
+                Object next = inputFormat.nextRecord(serializer.createInstance());
+                if(next != null) {
+                    result.add(serializer.copy(next));
+                }
+                counter++;
+            }
+
+            inputFormat.close();
+        }
+
+        return result;
+    }
+
 
     /**
      * Executes the given operator with only one input record at a time.
